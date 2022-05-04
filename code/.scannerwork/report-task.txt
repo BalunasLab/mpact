@@ -1,0 +1,6 @@
+projectKey=msfast
+serverUrl=http://localhost:9000
+serverVersion=8.6.1.40680
+dashboardUrl=http://localhost:9000/dashboard?id=msfast
+ceTaskId=AXdMfpP50T5dJesO6BsL
+ceTaskUrl=http://localhost:9000/api/ce/task?id=AXdMfpP50T5dJesO6BsL

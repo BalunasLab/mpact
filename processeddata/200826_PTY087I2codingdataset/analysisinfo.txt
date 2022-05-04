@@ -1,0 +1,48 @@
+Analysis Date: 2021-10-05 19:40:01.818000
+Runetime: 4.51 seconds
+Input file: C:\Users\Xanadu\Documents\GitHub\Samples_MSFaST_2020\rawdata\PTY087I2\200826_PTY087I2codingdataset.csv
+Sample list: C:\Users\Xanadu\Documents\GitHub\Samples_MSFaST_2020\rawdata\PTY087I2\samplelist.csv
+Extract metadata file: C:\Users\Xanadu\Documents\GitHub\Samples_MSFaST_2020\rawdata\PTY087I2\extractmetadata.csv
+Number of injections: 27
+Number of samples: 9
+Number of biological groups: 3
+
+
+---Filtering---
+-CV filtering-
+CV threshold: 0.2
+
+-Relative filtering-
+Ringing window: 0.5
+Isotopic peak window: 0.01
+Dimer filter window: 0.01
+RT window: 0.005
+max isotopic peak shift: 4.0
+
+Total features: 1816
+Features failing peak correction filtering: 347/4956 7.0%
+Features failing blank filtering: 1716/4956 34.62%
+Features failing blank filtering: 1077/4956 21.73%
+Features failing CV filtering: 1116/4956 22.52%
+Features failing any filters: 3979/4956 80.29%
+Features passing all filters: 977/4956 19.71%
+
+
+---Graphing Parameters---
+Filters: 
+cv
+rel
+insource
+
+-Groups-
+0um_Ce 250um_Ce + -Blanks Media cv rel insource c=#000000 n=New Feature Set
+
+-Plots generated-
+RT/mz: True
+RT/mz/FC: True ['0um_Ce', 'Media']
+KMD/mz True
+PCA unfitlered: True
+PCA filtered: True
+Dendrogram (ward) unfiltered: True
+Dendrogram (ward) Filtered: True
+Volcano plot: True ['0um_Ce', 'Media']

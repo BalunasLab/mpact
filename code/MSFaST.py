@@ -1,0 +1,217 @@
+import pandas as pd
+import numpy as np
+import filter
+import stats
+from datetime import datetime
+import time
+from pathlib import Path
+
+#---Classes---
+
+class groupset:  # parses the ions to be plotted as a specific color based on thier presence in user input sample groups
+    def __init__(self, name, query, iondictloc):
+
+        self.legendname = query.name
+        self.excl = query.excl
+        self.incl = query.incl
+        self.plotcol = query.colour
+    
+        iondict = pd.read_csv(iondictloc, sep = ',', header = 0, index_col = 'Compound') #block adds average and median cv to iondict.csv, move elsewhere
+        iondict = iondict.loc[iondict['groups'].notna(), 'groups'].to_frame()
+        exclgrps = ' ' + '| '.join(self.excl)
+        if len(exclgrps)>3: #only runs below line if there is an exclusion group
+            iondict = iondict.loc[~iondict['groups'].str.contains(exclgrps), 'groups'].to_frame()#this does not work right if there are no exclusion groups so an artificial one was added
+        for group in self.incl:
+            iondict = iondict.loc[iondict['groups'].str.contains(' ' + str(group)), 'groups'].to_frame()
+        self.ionlist = iondict.index.to_list()
+       
+class analysis_parameters:
+    def __init__(self):
+        self.init = ''
+
+
+#---Methods---
+
+def start_time(): #used to calculate runtime
+   global initial
+   initial = time.time()
+   return initial
+
+def stop_time(): #used to calculate runtime
+   final = time.time()
+   return(final - initial)
+
+def importdata(): #possibly add code to organize collumns, would need to split main loop in two
+    print('Loading files')
+    extractmetadata = pd.read_csv(analysis_params.extractmetadatafilename, sep = ',', header = [0], index_col = None) #imports sample/extract metadata
+    samplelist = pd.read_csv(analysis_params.samplelistfilename, sep = ',', header = [0], index_col = None) #imports instrument sample list
+    combinedmetadata = extractmetadata.set_index('Sample_Code').join(samplelist.set_index('Sample_Code')).reset_index().set_index('Injection') #joins extract metadata and sample list by the sample code, looks like a god line probabaly best to move set index into the import
+    msdata = pd.read_csv(analysis_params.filename, sep = ',', header = None, index_col = [0, 1, 2]) #imports feature list
+    position = 0
+    for elem in msdata.iloc[1]: # itterates over header to format
+        msdata.iloc[1, position] = combinedmetadata.loc[msdata.iloc[2, position], 'Sample_Code']
+        msdata.iloc[0, position] = combinedmetadata.loc[msdata.iloc[2, position], 'Biological_Group']
+        position += 1 # increments current injection index
+    
+    print('Writing formatted peak table')
+    msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header = False, index = True) #saves formatted backup for later use
+    
+    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0,1,2], index_col = [0]) #imports data
+    msdataave = msdata.iloc[:,2:].astype(float)
+    msdataave['mean'] = msdataave.mean(axis=1, skipna=True)
+    msdata = msdata[msdataave['mean'] != 0]
+    msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header = True, index = True) #saves formatted backup for later use
+    msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.name), header = True, index = True) #saves formatted backup for later use
+
+    iondict = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = None).iloc[:,:3] #next lines save feature dictionary with KMD for later use
+    iondict['kmd'] = iondict['m/z'] - np.floor(iondict['m/z'])
+    #iondict['kmd'] = (np.floor(iondict['m/z']) - iondict['m/z']*14/14.01565) #actual kmd
+    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = False)
+
+
+def run_MSFaST(self): #main code runs within this method, gui calls this
+    start_time()
+    global analysis_params
+    analysis_params = self.analysis_paramsgui
+    importdata()
+
+    #---Filtering and error propagation---
+    print('Filtering data')
+    self.ionfilters={} #dictionary of filter list objects for each filter
+    if analysis_params.relfil:
+        self.ionfilters = filter.relationalfilter(analysis_params, self.ionfilters) #runs relational/deringing filter on cv filtered data
+        if analysis_params.merge:
+            filter.mergeions(analysis_params, self.ionfilters)
+    if analysis_params.grpave:
+        stats.groupave(analysis_params) #averages biological groups
+        print('Parsing ion lists')
+        groupionlists = filter.parsionlists(analysis_params) #parses ion lists in each biol group, needed for group filtering
+    if analysis_params.blnkfltr: #probably would be best to put this in a seperate method
+        msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0, 1, 2], index_col = None)
+        msdata = filter.listfilter(msdata, groupionlists[analysis_params.blnkgrp], False)
+        msdata = msdata.drop(analysis_params.blnkgrp, axis=1, level=0)
+        msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header = True, index = False)
+        iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = 0)
+        iondict['pass_blnkfil'] = ~iondict.index.isin(groupionlists[analysis_params.blnkgrp])
+        iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = True) #saves formatted backup for later use
+    if analysis_params.CVfil:
+        self.ionfilters = filter.cvfilter(analysis_params, self.ionfilters, analysis_params.cvthresh) #runs cv filter MAKE SURE TO CUT CVTHRESH AND TAKE FROM ANALYSISPARAMS OBJECt
+    if analysis_params.decon:
+        self.ionfilters = filter.decon(analysis_params, self.ionfilters)
+    filter.applyfilters(analysis_params, self.ionfilters) #applies filters, or resaves unfiltered as filtered file if no filters are to be applied
+    if analysis_params.prperr:
+        stats.properr(analysis_params) #propagates error
+
+    self.groupionlists = groupionlists #need to make all instances of this to self.groupions this is so the list if number of blank ions can be gotten for group stats
+    #---Plotting and statistics---
+
+    #parse ion lists and add filter lists
+    if analysis_params.CVfil: #adds quality filters to group ionlists which already had the list of ions in each group
+        groupionlists['cv'] = self.ionfilters['cv'].ions
+    if analysis_params.relfil:    
+        groupionlists['relfil'] = self.ionfilters['relfil'].ions
+    if analysis_params.decon:
+        groupionlists['insource'] = self.ionfilters['insource'].ions
+    
+    #add groups collumn to iondict csv
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = 0, index_col = None) #block adds average and median cv to iondict.csv
+    iondict['groups'] = ''
+    for group in groupionlists:
+        iondict.loc[iondict['Compound'].isin(groupionlists[group]), 'groups'] += (' ' + str(group))
+    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = None) #saves formatted backup for later use
+
+    
+    #add default filters to querylist
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
+    self.groupsets, self.filtereddfs = {}, {}
+    position = 0 #this var can likely be removed
+    #create groupsets
+    for elem in analysis_params.querylist: #creates filtered dataframe from iondict.csv
+        self.groupsets[elem] = groupset(elem, analysis_params.querydict[elem], analysis_params.outputdir / 'iondict.csv')
+        self.filtereddfs[elem] = filter.listfilter(iondict, self.groupsets[elem].ionlist, True)
+        #self.filtereddfs[elem].to_csv(str(elem + '.csv'), header = True, index = False) to check filtereddf contents for troubleshooting
+        position += 1
+
+
+    #block creates user specified plots some of these can be changed to eliminate a few arguments with data pulled from analysis_params
+    if analysis_params.FC:    
+        stats.runfc(analysis_params, analysis_params.statstgrps)
+    if analysis_params.Ttest:
+        stats.runttest(analysis_params, analysis_params.statstgrps, self.groupsets) #needed to add groupsets to this to get fdr correction to work, should figure out better way. maybe should generate list of all ions to be plotted outside of a method
+        #definitely will be better to generate this list as part of analysis params, will do later
+    
+    #---Analysis info file writing---
+    runtime = stop_time()
+    msdata_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0])
+    msdata_header = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_filtered.csv'), sep = ',', header = None, index_col = [0,1,2]).iloc[:3,:].transpose()
+    msdata_header.columns = ['Biolgroup', 'Sample', 'Injection']
+    
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
+    self.unfilteredgroupsets, self.unfiltereddfs = {}, {} #need to clean up the groupset and filtered dfs code to not include the cv and relative filters along with regular groups needed to reopen iondict, think fc was added to filtered dfs later in ploting module... need to fix
+    #is this even used anymore???
+    
+    
+
+    self.analysis_paramsgui = analysis_params
+    msdata_unformatted = pd.read_csv(analysis_params.filename, sep = ',', header = [0, 1, 2], index_col = [0, 1, 2]) #imports feature list
+    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.name), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])
+    msdata_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])
+    analysisrec = open(analysis_params.outputdir / 'analysisinfo.txt',"w")
+    analysisrec.writelines(['Analysis Date: ' + str(datetime.now()) + '\n',
+                            'Runetime: ' + str(round(runtime, 2)) + ' seconds\n',
+                            'Input file: ' + str(analysis_params.filename) + '\n',
+                            'Sample list: ' + str(analysis_params.samplelistfilename) + '\n',
+                            'Extract metadata file: ' + str(analysis_params.extractmetadatafilename) + '\n',
+                            'Number of injections: ' + str(msdata_header['Injection'].nunique()) + '\n',
+                            'Number of samples: ' + str(msdata_header['Sample'].nunique())  + '\n',
+                            'Number of biological groups: ' + str(msdata_header['Biolgroup'].nunique())  + '\n',
+                            '\n',
+                            '\n',
+                            '---Filtering---\n',
+                            '-CV filtering-\n',
+                            'CV threshold: ' + str(analysis_params.cvthresh) + '\n',
+                            '\n',
+                            '-Relative filtering-\n',
+                            'Ringing window: ' + str(analysis_params.ringingwin) + '\n',
+                            'Isotopic peak window: ' + str(analysis_params.isopeakwin) + '\n',
+                            'Dimer filter window: ' + str(analysis_params.dimerpeakwin) + '\n',
+                            'RT window: ' + str(analysis_params.RTwin) + '\n',
+                            'max isotopic peak shift: ' + str(analysis_params.maxisowin) + '\n',
+                            '\n',
+                            'Total features: ' + str(len(msdata.index)) + '\n'])
+    
+    text = ''
+    if self.analysis_paramsgui.relfil:
+        text = text + 'Features failing peak correction filtering: ' + str(len(self.ionfilters['relfil'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['relfil'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
+    if self.analysis_paramsgui.blnkfltr: #FIX THIS REF TO "BLANKS"
+        text = text + 'Features failing blank filtering: ' + str(len(self.groupionlists['Blanks'])) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.groupionlists['Blanks'])/len(msdata_unformatted.index), 2)) +'%\n'
+    if self.analysis_paramsgui.decon:
+        text = text + 'Features failing blank filtering: ' + str(len(self.ionfilters['insource'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['insource'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
+    if self.analysis_paramsgui.CVfil:
+        text = text + 'Features failing CV filtering: ' + str(len(self.ionfilters['cv'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['cv'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
+    text = text + 'Features failing any filters: ' + str(len(msdata_unformatted.index) - len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*(len(msdata_unformatted.index) - len(msdata_filtered.index))/len(msdata_unformatted.index), 2)) +'%\n'
+    text = text + 'Features passing all filters: ' + str(len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(msdata_filtered.index)/len(msdata_unformatted.index), 2)) +'%\n'
+
+    analysisrec.writelines([text,
+                            '\n',
+                            '\n',
+                            '---Graphing Parameters---\n',
+                            'Filters: \n'])
+    for elem in analysis_params.graphfilters.split(' '):
+        analysisrec.write(elem + '\n')
+    analysisrec.writelines(['\n',
+                            '-Groups-\n'])
+    for elem in analysis_params.querylist:
+        analysisrec.write(elem + '\n')
+    analysisrec.writelines(['\n',
+                            '-Plots generated-\n',
+                            'RT/mz: ' + str(analysis_params.MZRTplt) + '\n',
+                            'RT/mz/FC: ' + str(analysis_params.FC3Dplt) + ' ' + str(analysis_params.statstgrps) + '\n',
+                            'KMD/mz ' + str(analysis_params.KMD) + '\n',
+                            #'KMD/mz/RT ' + str(analysis_params.___) + '\n',
+                            'PCA unfitlered: ' + str(analysis_params.PCA) + '\n',
+                            'PCA filtered: ' + str(analysis_params.PCA) + '\n',
+                            'Dendrogram (ward) unfiltered: ' + str(analysis_params.Dendrogram) + '\n',
+                            'Dendrogram (ward) Filtered: ' + str(analysis_params.Dendrogram) + '\n',
+                            'Volcano plot: ' + str(analysis_params.Volcanoplt) + ' ' + str(analysis_params.statstgrps) + '\n',])
+    analysisrec.close()
