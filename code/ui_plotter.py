@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """
-Created on Mon Feb  1 09:47:55 2021
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
 
-@author: rober
-"""
 
 class genfeatureplot:
     

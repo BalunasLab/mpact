@@ -1,3 +1,8 @@
+"""
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
+
 import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'

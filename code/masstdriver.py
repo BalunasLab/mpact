@@ -1,3 +1,8 @@
+"""
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
+
 import webbrowser
 
 #def push(description, precursor, fragments):

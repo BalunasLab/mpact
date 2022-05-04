@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sun Mar 20 11:45:17 2022
-
-@author: rsamples
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
 
 import subprocess

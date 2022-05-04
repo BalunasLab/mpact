@@ -1,3 +1,8 @@
+"""
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
+
 ## ==> GUI FILE
 from main import MainWindow, query, start_functime, stop_functime, reset_runtime, ftrdialog, dialog
 #import masstdriver #from old version of masst search push

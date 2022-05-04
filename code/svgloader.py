@@ -1,3 +1,8 @@
+"""
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
+
 import sys
 from PyQt5 import QtSvg
 from PyQt5.QtWidgets import *

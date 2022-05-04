@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Mon Feb 15 22:12:43 2021
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
 
-@author: Xanadu
-"""
+
 from indigo import *  
 from indigo.renderer import IndigoRenderer
 import pandas as pd

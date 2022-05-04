@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Mon Feb 15 12:37:27 2021
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
 
-@author: Xanadu
-"""
+
 import pandas as pd
 import numpy as np
 from pathlib import Path

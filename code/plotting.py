@@ -1,3 +1,8 @@
+"""
+MPACT
+Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
+"""
+
 import numpy as np
 import pandas as pd
 
