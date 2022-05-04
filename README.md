@@ -1,4 +1,4 @@
-# Samples_MPACT_2022
+# MPACT
 
 ## Installation ##
 
