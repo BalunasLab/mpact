@@ -461,7 +461,7 @@ class UIFunctions(MainWindow):
                 
     def getfilename(self):
             self.filename, _  = QFileDialog.getOpenFileName(self, 'Open file', self.recentdir ,
-                                                                           "*.csv")
+                                                                           "*.csv *.txt")
             self.filename = Path(self.filename)
             self.recentdir = str(self.filename.parent)
             self.ui.lbl_pktbl.setText(self.filename.name)

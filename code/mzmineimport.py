@@ -13,12 +13,13 @@ def format_check(parent):
     try:
         if parent.filename.suffix == '.txt':
             reformat_msdial(Path(parent.filename))
+            parent.filename = str(file.parent / (str(file.stem) + '.csv'))
+            print(parent.filename)
             
         if parent.filename.suffix == '.csv':
             msdata = pd.read_csv(parent.filename, sep = ',', header = None, index_col = None) #imports feature list
             if msdata.iloc[0, 0] == 'row ID':
                 reformat_mzmine(Path(parent.filename))
-                parent.filename = str(parent.filename.parent / parent.filename.stem / '.csv')
     except Exception:
         pass
         return()
@@ -47,13 +48,12 @@ def reformat_msdial(file):
     database.iloc[:,3] = database.iloc[:,2]
     database.iloc[:,2] = database.iloc[:,1]
     database.iloc[:,1] = database.iloc[:,3]
-    database2 = database.iloc[:,0:3].join(database.iloc[:,32:-10])
+    database2 = database.iloc[:,0:3].join(database.iloc[:,32:-2])
     database2.iloc[2,:] = database2.iloc[1,:]
     database2.iloc[3,:] = database2.iloc[1,:]
     database2 = database2.iloc[2:,:]
     database2.iloc[2,:3] = ['Compound', 'm/z', 'Retention time (min)']
-    
-    database2.to_csv(file.parent / file.stem / '.csv', header = False, index = False) #saves formatted backup for later use This line might break on import of new files...
-    database = pd.read_csv(file.parent / file.stem / '.csv', sep = ',', header = [0,1,2], index_col = None) #imports data
+    database2.to_csv(file.parent / (str(file.stem) + '.csv'), header = False, index = False) #saves formatted backup for later use This line might break on import of new files...
+    database = pd.read_csv(file.parent / (str(file.stem) + '.csv'), sep = ',', header = [0,1,2], index_col = None) #imports data
     database.iloc[:,0] = database.iloc[:,2].astype(str)+"_"+database.iloc[:,1].astype(str)
-    database.to_csv(file.parent / file.stem / '.csv', header = True, index = False) #saves formatted backup for later use This line might break on import of new files...
+    database.to_csv(file.parent / (str(file.stem) + '.csv'), header = True, index = False) #saves formatted backup for later use This line might break on import of new files...
