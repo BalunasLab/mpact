@@ -3,7 +3,7 @@
 ## Installation ##
 
 1. Download and install Anaconda from https://www.anaconda.com/products/individual
-2. Download and unzip repository
+2. Download and unzip repository (code>download ZIP) or clone with GitHub Desktop (code>open with GitHub Desktop)
 
 ## Startup ##
 
