@@ -1,9 +1,9 @@
-import """
+"""
 MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
 
-pandas as pd
+import pandas as pd
 import numpy as np
 import math
 import scipy.cluster.hierarchy as spc
