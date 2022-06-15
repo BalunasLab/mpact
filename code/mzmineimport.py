@@ -13,8 +13,9 @@ def format_check(parent):
     try:
         if parent.filename.suffix == '.txt':
             reformat_msdial(Path(parent.filename))
-            parent.filename = str(file.parent / (str(file.stem) + '.csv'))
+            parent.filename = Path(str(parent.filename)[:-4] + '.csv')
             print(parent.filename)
+
             
         if parent.filename.suffix == '.csv':
             msdata = pd.read_csv(parent.filename, sep = ',', header = None, index_col = None) #imports feature list
@@ -48,7 +49,9 @@ def reformat_msdial(file):
     database.iloc[:,3] = database.iloc[:,2]
     database.iloc[:,2] = database.iloc[:,1]
     database.iloc[:,1] = database.iloc[:,3]
-    database2 = database.iloc[:,0:3].join(database.iloc[:,32:-2])
+    headser = database.iloc[3,:] == 'Stdev'
+    cutlen = len(headser[headser == True]) * 2 #cut cols for stdev and average
+    database2 = database.iloc[:,0:3].join(database.iloc[:,32: -cutlen])
     database2.iloc[2,:] = database2.iloc[1,:]
     database2.iloc[3,:] = database2.iloc[1,:]
     database2 = database2.iloc[2:,:]
