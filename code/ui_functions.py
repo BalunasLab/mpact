@@ -9,10 +9,6 @@ from main import MainWindow, query, start_functime, stop_functime, reset_runtime
 import webbrowser #may not be needed now
 from mzmineimport import format_check
 
-# CHECK/IMPORT DEPENDENCIES
-from importdependencies import checkdep
-checkdep()
-
 import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -33,7 +29,9 @@ from MSFaST import analysis_parameters
 
 import os
 
-
+# CHECK/IMPORT DEPENDENCIES
+from importdependencies import checkdep
+checkdep()
 
 
 ## ==> GLOBALS
