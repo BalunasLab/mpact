@@ -515,7 +515,7 @@ class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
         try:
             parent.ax[self.currplt].set_ylim(0, maxpval*1.1)
         except Exception:
-            self.error('Warning: No volcano plot features generated, check test groups')
+            parent.error('Warning: No volcano plot features generated, check test groups')
             pass
         parent.ax[self.currplt].grid()
         parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('logfc', '-logq')))
@@ -626,7 +626,7 @@ class plot_PCA(ui_plot): #plots NMDS data
             components = 10
         msdata_header.columns = ['Biolgroup', 'Sample', 'Injection'] #could clean up this section for color assignment
         msdata_header = msdata_header.set_index('Injection')
-        colors, colorpos, biolgroupmap = ['red','blue','black','grey','purple','orange','green','yellow','lime', 'plum', 'teal', 'olivedrab', 'sienna', 'maroon', 'navy'], 0, {}
+        colors, colorpos, biolgroupmap = ['red','blue','black','grey','purple','orange','green','yellow','lime', 'plum', 'teal', 'olivedrab', 'sienna', 'maroon', 'navy', 'lightcoral', 'darkgoldenrod', 'seagreen', 'lightseagreen','aqua','lightsteelblue','slateblue','blueviolet','plum','burlywood','salmon','aquamarine','magenta','tan'], 0, {}
         for elem in msdata_header['Biolgroup']:
             if elem not in biolgroupmap and elem != parent.analysis_paramsgui.blnkgrp: ###### delete blank clause OR CHANGE TO THE BLNKFILTER OPTION
                 biolgroupmap[elem] = colors[colorpos]
