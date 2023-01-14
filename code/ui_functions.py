@@ -2,6 +2,9 @@
 MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
+# CHECK/IMPORT DEPENDENCIES
+from importdependencies import checkdep
+checkdep()
 
 ## ==> GUI FILE
 from main import MainWindow, query, start_functime, stop_functime, reset_runtime, ftrdialog, dialog
@@ -29,9 +32,6 @@ from MSFaST import analysis_parameters
 
 import os
 
-# CHECK/IMPORT DEPENDENCIES
-from importdependencies import checkdep
-checkdep()
 
 
 ## ==> GLOBALS
