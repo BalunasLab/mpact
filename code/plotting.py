@@ -17,6 +17,8 @@ import matplotlib.ticker as ticker
 import seaborn as sns
 import squarify # pip install squarify
 import upsetplot
+import matplotlib.colors as mc
+import colorsys
 #plt.rc('xtick',labelsize=16)
 #plt.rc('ytick',labelsize=16)
 
@@ -67,8 +69,8 @@ class NavigationToolbar(NavigationToolbar2QT): #subclassed plot toolbar with ext
             self.addWidget(button)
         
 #General plot method#
-class ui_plot: #subclassed for individual plots
-    def __init__(self, parent, currplt, frame): #initialization of general params for all plots
+class ui_plot:
+    def __init__(self, parent, currplt, frame):
         parent.fig[currplt] = Figure()
         parent.pltlayout[currplt] = QtWidgets.QVBoxLayout()
         parent.canvas[currplt] = FigureCanvas(parent.fig[currplt])
@@ -77,38 +79,34 @@ class ui_plot: #subclassed for individual plots
         parent.toolbar[currplt].setStyleSheet("background-color:rgba(225,225,225,0);")
         parent.pltlayout[currplt].addWidget(parent.toolbar[currplt])
         frame.setLayout(parent.pltlayout[currplt])
-        parent.ax[currplt] = parent.canvas[currplt].figure.subplots()  
+        parent.ax[currplt] = parent.canvas[currplt].figure.subplots()
         parent.ax[currplt].set_axisbelow(True)
 
-        self.fcsfont = {'fontname':'Bahnschrift',
-                'weight' : 'bold',
-                'size'   : 20}
-        self.fhfont = {'fontname':'Bahnschrift',
-                'weight' : 'bold',
-                'size'   : 25}
+        self.fcsfont = {'fontname': 'Bahnschrift', 'weight': 'bold', 'size': 20}
+        self.fhfont = {'fontname': 'Bahnschrift', 'weight': 'bold', 'size': 25}
         self.plotbackground = (.89, .89, .89, 0)
         parent.canvas[currplt].figure.set_facecolor(self.plotbackground)
         parent.ax[currplt].set_facecolor(self.plotbackground)
 
-    def onpick(self, event, parent, iondict, plotcols): #general feature selection, changed for heatmap
+    def onpick(self, event, parent, iondict, plotcols):
         ind = event.ind
-        coord = event.artist.get_offsets()[ind,:]
-        pickedfeature = iondict.loc[iondict[plotcols[0]] == coord[0,0], :].loc[iondict[plotcols[1]] == coord[0,1], :]
-        parent.ui.lbl_featurename.setText('Compound: ' + str(pickedfeature.iloc[0,0]))
-        parent.ui.lbl_featurert.setText('Retention time: ' + str(round(pickedfeature.iloc[0,2], 4)))
-        parent.ui.lbl_featuremz.setText('m/z: ' + str(round(pickedfeature.iloc[0,1], 4)))
-        pickedfeature = str(pickedfeature.iloc[0,0])
+        coord = event.artist.get_offsets()[ind, :]
+        pickedfeature = iondict.loc[iondict[plotcols[0]] == coord[0, 0], :].loc[iondict[plotcols[1]] == coord[0, 1], :]
+        parent.ui.lbl_featurename.setText('Compound: ' + str(pickedfeature.iloc[0, 0]))
+        parent.ui.lbl_featurert.setText('Retention time: ' + str(round(pickedfeature.iloc[0, 2], 4)))
+        parent.ui.lbl_featuremz.setText('m/z: ' + str(round(pickedfeature.iloc[0, 1], 4)))
+        pickedfeature = str(pickedfeature.iloc[0, 0])
         parent.highlight_feature(pickedfeature)
-        
-    def reset(self, file, filtereddfs, groupsets): # resets plot on rerun of analysis
-                # need to do something with kwargs to allow different inputs for plot() based on what is needed
+
+    def reset(self, file, filtereddfs, groupsets):
         self.parent.ax[self.currplt].clear()
         self.parent.canvas[self.currplt].draw()
         self.plot(self.parent, file, filtereddfs, groupsets)
+
     
 #subclassed plot methods
 class plot_abund(): #abundance plot made of barchart and strip/point plots
-    def __init__(self, parent, currplt): #this is needed since two plots are included
+    def __init__(self, parent, currplt):
         self.parent = parent
         self.currplt = currplt
         parent.fig[currplt] = Figure()
@@ -120,63 +118,56 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         parent.pltlayout[currplt].addWidget(parent.toolbar[currplt])
         parent.ftrdialog.ui.frame_abundance.setLayout(parent.pltlayout[currplt])
         parent.ax[currplt] = parent.canvas[currplt].figure.subplots(ncols=2)  
-        
+
         self.plotbackground = (.89, .89, .89, 0)
         parent.canvas[currplt].figure.set_facecolor(self.plotbackground)
-        self.fcsfont = {'fontname':'Bahnschrift',
-                'weight' : 'bold',
-                'size'   : 12}
-        self.fhfont = {'fontname':'Bahnschrift',
-                'weight' : 'bold',
-                'size'   : 25}
-        
-    def plot(self, parent): #this could be made faster with a refactor
-        #get header info
+        self.fcsfont = {'fontname':'Bahnschrift', 'weight': 'bold', 'size': 12}
+        self.fhfont = {'fontname':'Bahnschrift', 'weight': 'bold', 'size': 25}
+
+    def plot(self, parent):
+        # Get header info
         currplt = self.currplt
-        msdata = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0]).iloc[:, 2:].loc[parent.pickedfeature]
+        msdata = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0]).iloc[:, 2:].loc[parent.pickedfeature]
         msdata = msdata.reset_index()
         msdata.columns = ['biolgroup','sample','injection','abundance']
         msdata = msdata.drop(columns=['injection'])
-        
-        #gets stats for the given ion
-        summary = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_summarydata.csv'), sep = ',', header = [0, 1], index_col = [0]).iloc[:, 2:].loc[parent.pickedfeature]
+
+        # Get stats for the given ion
+        summary = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_summarydata.csv'), sep=',', header=[0, 1], index_col=[0]).iloc[:, 2:].loc[parent.pickedfeature]
         combasd = summary.loc[['combASD']].to_frame()
-        combasd.index = combasd.index.droplevel(level = 0)
+        combasd.index = combasd.index.droplevel(level=0)
         neff = summary.loc[['neff']].to_frame()
-        neff.index = neff.index.droplevel(level = 0)
+        neff.index = neff.index.droplevel(level=0)
         ionsummary = summary.loc[['average']]
-        ionsummary.index = ionsummary.index.droplevel(level = 0)
+        ionsummary.index = ionsummary.index.droplevel(level=0)
 
         ionsummary = ionsummary.to_frame()
         ionsummary.columns = ['average']
         ionsummary['combASD'] = combasd
         ionsummary['neff'] = neff
-        if parent.analysis_paramsgui.blnkfltr: #need to not explicitly call blanks, call the value in the params
+        if parent.analysis_paramsgui.blnkfltr:
             ionsummary = ionsummary.drop([parent.analysis_paramsgui.blnkgrp], axis=0)
         ionsummary = ionsummary.reset_index()
 
-        #make plots for the features, strip and pointplot are computationally expensive
-        sns.barplot(ax=parent.ax[currplt][0], x="index", y="average", yerr=ionsummary["combASD"],
-                    errcolor=".2", edgecolor=".2", data=ionsummary, zorder=1)
-        parent.ax[currplt][1].set_xticklabels(parent.ax[currplt][1].get_xticklabels(), 
-                                  rotation=90, 
-                                  horizontalalignment='center')
-        
-        sns.stripplot(ax=parent.ax[currplt][1], x="sample", y="abundance", hue="biolgroup",
-                      data=msdata, size = 7, dodge=False, alpha=.5, zorder=2)
-        
-        sns.pointplot(ax=parent.ax[currplt][1], x="sample", y="abundance", color = "#999999", #hue="sample",
-                      data=msdata, dodge=False, join=False, #palette="dark",
-                      markers="d", scale=.75, zorder=1, capsize = .1,
-                      errwidth=1, ci=95)
+        # Make plots for the features
+        sns.barplot(ax=parent.ax[currplt][0], x="index", y="average", yerr=ionsummary["combASD"], errcolor=".2", edgecolor=".2", data=ionsummary, zorder=1)
+        parent.ax[currplt][1].set_xticklabels(parent.ax[currplt][1].get_xticklabels(), rotation=90, horizontalalignment='center')
 
-        ylims = (0, parent.ax[currplt][1].get_ylim()[1]*1.05)
+        sns.stripplot(ax=parent.ax[currplt][1], x="sample", y="abundance", hue="biolgroup",
+                      data=msdata, size=7, dodge=False, alpha=.5, zorder=2)
+
+        sns.pointplot(ax=parent.ax[currplt][1], x="sample", y="abundance", color="#999999",
+                      data=msdata, dodge=False, join=False, markers="d", scale=.75,
+                      zorder=1, capsize=.1, errwidth=1, ci=95)
+
+        ylims = (0, parent.ax[currplt][1].get_ylim()[1] * 1.05)
         parent.ax[currplt][0].set_ylim(ylims)
         parent.ax[currplt][1].set_ylim(ylims)
         parent.ax[currplt][1].legend_.remove()
         plt.tight_layout()
         plt.show()
-        
+    
+    
     def reset(self):
         self.parent.ax[self.currplt][0].clear()
         self.parent.ax[self.currplt][1].clear()
@@ -184,25 +175,23 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         self.parent.canvas[self.currplt].draw()
 
 class show_spectrum(ui_plot): #MS2 spectrum viewer
-            #should add annotation to bars
     def __init__(self, parent, currplt):
-        frame = parent.ftrdialog.ui.frame_spec
-        ui_plot.__init__(self, parent, currplt, frame)
+        super().__init__(parent, currplt, parent.ftrdialog.ui.frame_spec)
         self.parent = parent
         self.currplt = currplt
-        
-    def plot(self, parent, frags): 
-        parent.ax[self.currplt].vlines(frags[:,0], 0, frags[:,1], colors='k', linestyles='solid')
-        parent.ax[self.currplt].set_xlabel('m/z',  **self.fcsfont)
-        parent.ax[self.currplt].set_ylabel('Abundance',  **self.fcsfont)
-        parent.ax[self.currplt].set_xlim(left=0)
-        parent.ax[self.currplt].set_ylim(bottom=0)
-        parent.canvas[self.currplt].draw()
-        
-    def reset(self, parent, frags): # need to do something with kwargs to allow different inputs for plot() based on what is needed MAYBE JUST RESET THE DATA SET OR AXIS DIRECTLY
-        self.parent.ax[self.currplt].clear()
+
+    def plot(self, frags):
+        ax = self.parent.ax[self.currplt]
+        ax.vlines(frags[:, 0], 0, frags[:, 1], colors='k', linestyles='solid')
+        ax.set_xlabel('m/z', **self.fcsfont)
+        ax.set_ylabel('Abundance', **self.fcsfont)
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
         self.parent.canvas[self.currplt].draw()
-        self.plot(parent, frags)
+
+    def reset(self, frags):
+        self.parent.ax[self.currplt].clear()
+        self.plot(frags)
         
 class show_featureplt(ui_plot): #filtered feature plot
     def __init__(self, parent, currplt, frame, iondictloc, filtereddfs, groupsets):
@@ -211,35 +200,35 @@ class show_featureplt(ui_plot): #filtered feature plot
         self.currplt = currplt
         self.plot(parent, iondictloc, filtereddfs, groupsets)
         
-    def plot(self, parent, iondictloc, filtereddfs, groupsets): # may be possible to improve feature selection from DFs
-        iondict = pd.read_csv(iondictloc, sep = ',', header = [0], index_col = None)
+    def plot(self, parent, iondictloc, filtereddfs, groupsets):
+        iondict = pd.read_csv(iondictloc, sep=',', header=[0], index_col=None)
         iondict['colour'] = '#000000' # colour map for features based on which filter they are caught by
+        
         if parent.analysis_paramsgui.decon:
             iondict.loc[iondict['pass_insource'] == False, 'colour'] = '#00aa00'
         if parent.analysis_paramsgui.CVfil:
-            iondict.loc[iondict[parent.analysis_paramsgui.cvparam] >= parent.analysis_paramsgui.cvthresh, 'colour'] = '#ff0000' #CHANGE BACK TO analysisparamasgui.cvthresh or whatever
+            iondict.loc[iondict[parent.analysis_paramsgui.cvparam] >= parent.analysis_paramsgui.cvthresh, 'colour'] = '#ff0000' 
         if parent.analysis_paramsgui.blnkfltr:
             iondict.loc[iondict['pass_blnkfil'] == False, 'colour'] = '#00aaaa'
         if parent.analysis_paramsgui.relfil:
             iondict.loc[iondict['pass_relfil'] == False, 'colour'] = '#0000ff'
     
-        parent.a = parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == '#0000ff', :]['Retention time (min)'], iondict.loc[iondict['colour'] == '#0000ff', :]['m/z'], color = '#0000ff', label="Mispicked", picker=True, alpha=.5)
-        parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == '#00aaaa', :]['Retention time (min)'], iondict.loc[iondict['colour'] == '#00aaaa', :]['m/z'], color = '#00aaaa', label="Blank features", picker=True, alpha=.5)
-        parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == '#ff0000', :]['Retention time (min)'], iondict.loc[iondict['colour'] == '#ff0000', :]['m/z'], color = '#ff0000', label="Nonreproducable", picker=True, alpha=.5)
-        parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == '#00aa00', :]['Retention time (min)'], iondict.loc[iondict['colour'] == '#00aa00', :]['m/z'], color = '#00aa00', label="In-source ions", picker=True, alpha=.5)
-        parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == '#000000', :]['Retention time (min)'], iondict.loc[iondict['colour'] == '#000000', :]['m/z'], color = '#000000', label="High Quality", picker=True, alpha=.5)
+        colours = ['#0000ff', '#00aaaa', '#ff0000', '#00aa00', '#000000']
+        labels = ["Mispicked", "Blank features", "Nonreproducable", "In-source ions", "High Quality"]
+        for i in range(len(colours)):
+            parent.ax[self.currplt].scatter(iondict.loc[iondict['colour'] == colours[i], :]['Retention time (min)'], iondict.loc[iondict['colour'] == colours[i], :]['m/z'], color=colours[i], label=labels[i], picker=True, alpha=.5)
+        
         parent.highlight[self.currplt], = parent.ax[self.currplt].plot([], [], 'o', markersize=12, color='yellow')
-        parent.ax[self.currplt].set_xlabel('Retention time (min)',  **self.fcsfont)
-        parent.ax[self.currplt].set_ylabel('m/z',  **self.fcsfont)
+        parent.ax[self.currplt].set_xlabel('Retention time (min)', **self.fcsfont)
+        parent.ax[self.currplt].set_ylabel('m/z', **self.fcsfont)
         parent.ax[self.currplt].set_xlim([0, 11])
         parent.ax[self.currplt].set_ylim([0, 2000])
         parent.ax[self.currplt].grid()
         parent.ax[self.currplt].legend()
         parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.15,top=0.9,
-                            hspace=0.2,wspace=0.2)
+        parent.fig[self.currplt].subplots_adjust(left=.1, right=.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
+
 
 class plot_heatmap(): #heatmap
     def __init__(self, parent, currplt, frame, file):
@@ -375,22 +364,31 @@ class plot_mzrt(ui_plot): #feature mass vs retention time plot
         self.plot(parent, file, filtereddfs, groupsets)
         
     def plot(self, parent, file, filtereddfs, groupsets): # abundance tied opacity used here currently
-        iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
+        iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=None)
+        
         for elem in filtereddfs:
             if parent.analysis_paramsgui.blnkfltr:
                 filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']]
+            
             plotcol = groupsets[elem].plotcol.lstrip('#')
-            rgbcol = tuple(float(int(plotcol[i:i+2], 16)/255) for i in (0, 2, 4)) #prob need to clean this ups to not use float(int)
+            rgbcol = tuple(float(int(plotcol[i:i+2], 16)/255) for i in (0, 2, 4))
             rgbacol = np.asarray([(rgbcol[0], rgbcol[1], rgbcol[2], a) for a in filtereddfs[elem]['logmax']/parent.analysis_paramsgui.maxval])
             rgbacol = np.clip(rgbacol, 0, 1)
-            parent.ax[self.currplt].scatter(filtereddfs[elem]['Retention time (min)'].to_list(), filtereddfs[elem]['m/z'].to_list(), c = rgbacol, label = str(groupsets[elem].legendname), picker=True) 
+            
+            parent.ax[self.currplt].scatter(filtereddfs[elem]['Retention time (min)'].to_list(), 
+                                             filtereddfs[elem]['m/z'].to_list(), 
+                                             c=rgbacol, 
+                                             label=str(groupsets[elem].legendname), 
+                                             picker=True) 
             #parent.ax[self.currplt].scatter(filtereddfs[elem]['Retention time (min)'].to_list(), filtereddfs[elem]['m/z'].to_list(), color = str(groupsets[elem].plotcol), label = str(groupsets[elem].legendname), picker=True, alpha=.5)
+
         parent.highlight[self.currplt], = parent.ax[self.currplt].plot([], [], 'o', markersize=12, color='yellow')
-        parent.ax[self.currplt].set_xlabel("Retention time (min)",  **self.fcsfont)
-        parent.ax[self.currplt].set_ylabel('m/z',  **self.fcsfont)
+        parent.ax[self.currplt].set_xlabel("Retention time (min)", **self.fcsfont)
+        parent.ax[self.currplt].set_ylabel('m/z', **self.fcsfont)
         parent.ax[self.currplt].set_xlim(-.5, 11.5)
         parent.ax[self.currplt].set_ylim(0, 1850)
         parent.ax[self.currplt].legend()
+        
         parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
         parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
                             bottom=0.15,top=0.9,
@@ -406,60 +404,52 @@ class plot_samplecorr(ui_plot): # sample spearman/pearson corelation plot genera
         self.plot(parent, file, filtereddfs, groupsets)
         
     def plot(self, parent, file, filtereddfs, groupsets):
-        iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
-        msdata = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])
-        msdata = msdata.stack([0,1,2])
-        msdata = msdata.groupby(level = [0,1,2,3,4]).mean()
-        msdata = msdata.droplevel(level = 3, axis=0)
-        msdata = msdata.unstack()
-        msdata.index = msdata.index.droplevel([1,2])
+        iondict = pd.read_csv(self.parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=None)
+        msdata = pd.read_csv(self.parent.analysis_paramsgui.outputdir / (self.parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+        msdata = msdata.stack([0, 1, 2]).groupby(level=[0, 1, 2, 3, 4]).mean().droplevel(level=3, axis=0).unstack()
+        msdata.index = msdata.index.droplevel([1, 2])
         pmatrix = msdata.corr(method='spearman')
-
-        if len(parent.ax[self.currplt].figure.axes)>1:
-            sns.heatmap(pmatrix, ax = parent.ax[self.currplt].figure.axes[0], cbar_ax = parent.ax[self.currplt].figure.axes[1], cmap=parent.analysis_paramsgui.colorscheme, vmin=0, vmax=1) #viridis
-        else:
-            sns.heatmap(pmatrix, ax = parent.ax[self.currplt], cmap=parent.analysis_paramsgui.colorscheme, vmin=0, vmax=1) #viridis
-        parent.ax[self.currplt].axes.get_xaxis().get_label().set_visible(False)
-        parent.ax[self.currplt].axes.get_yaxis().get_label().set_visible(False)
-
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.15,top=0.9,
-                            hspace=0.2,wspace=0.2)
-        parent.canvas[self.currplt].draw() 
+        ax = self.parent.ax[self.currplt].figure.axes[0] if len(self.parent.ax[self.currplt].figure.axes) > 1 else self.parent.ax[self.currplt]
+        sns.heatmap(pmatrix, ax=ax, cmap=self.parent.analysis_paramsgui.colorscheme, vmin=0, vmax=1)
+        ax.axes.get_xaxis().get_label().set_visible(False)
+        ax.axes.get_yaxis().get_label().set_visible(False)
+        self.parent.fig[self.currplt].subplots_adjust(left=.1, right=.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
+        self.parent.canvas[self.currplt].draw()
        
     
 class kendrick(ui_plot): #plots mass defect vs nominal mass
                 #need to change method name since this isnt actually kendrick mass but just mass defect
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
-        ui_plot.__init__(self, parent, currplt, frame)
+        super().__init__(parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
 
-    def plot(self, parent, file, filtereddfs, groupsets): #currently uses opacity tied to abundance.
-        iondict = pd.read_csv(file, sep = ',', header = [0], index_col = None)
-        for elem in filtereddfs:
-            if parent.analysis_paramsgui.blnkfltr: #does this need to be here? may be redundant
+    def plot(self, parent, file, filtereddfs, groupsets):
+        iondict = pd.read_csv(file, sep=',', header=0, index_col=None)
+
+        if parent.analysis_paramsgui.blnkfltr:
+            for elem in filtereddfs:
                 filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']]
 
+        for elem in filtereddfs:
             plotcol = groupsets[elem].plotcol.lstrip('#')
-            rgbcol = tuple(float(int(plotcol[i:i+2], 16)/255) for i in (0, 2, 4)) #prob nee to clean this ups to not use float(int)
-            rgbacol = np.asarray([(rgbcol[0], rgbcol[1], rgbcol[2], a) for a in filtereddfs[elem]['logmax']/parent.analysis_paramsgui.maxval])
+            rgbcol = tuple(int(plotcol[i:i+2], 16) / 255 for i in (0, 2, 4))
+            rgbacol = [(rgbcol[0], rgbcol[1], rgbcol[2], a) for a in filtereddfs[elem]['logmax'] / parent.analysis_paramsgui.maxval]
             rgbacol = np.clip(rgbacol, 0, 1)
-            parent.ax[self.currplt].scatter(filtereddfs[elem]['m/z'], filtereddfs[elem]['kmd'], c = rgbacol, label = str(groupsets[elem].legendname), picker=True) 
-            #parent.ax[self.currplt].scatter(filtereddfs[elem]['m/z'], filtereddfs[elem]['kmd'], color = str(groupsets[elem].plotcol), label = str(groupsets[elem].legendname), picker=True, alpha=.5) 
+            parent.ax[self.currplt].scatter(filtereddfs[elem]['m/z'], filtereddfs[elem]['kmd'], c=rgbacol, label=str(groupsets[elem].legendname), picker=True)
+
         parent.highlight[self.currplt], = parent.ax[self.currplt].plot([], [], 'o', markersize=12, color='yellow')
-        parent.ax[self.currplt].set_xlabel("m/z",  **self.fcsfont)
-        parent.ax[self.currplt].set_ylabel('Mass Defect',  **self.fcsfont)
+
+        parent.ax[self.currplt].set_xlabel('m/z', **self.fcsfont)
+        parent.ax[self.currplt].set_ylabel('Mass Defect', **self.fcsfont)
         parent.ax[self.currplt].set_ylim(0, 1)
         parent.ax[self.currplt].grid()
         parent.ax[self.currplt].legend()
         parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('m/z', 'kmd')))
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.15,top=0.9,
-                            hspace=0.2,wspace=0.2)
-        parent.canvas[self.currplt].draw() 
-        
+        parent.fig[self.currplt].subplots_adjust(left=0.1, right=0.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
+        parent.canvas[self.currplt].draw()
+
         if parent.analysis_paramsgui.mdguide:
             parent.ax[self.currplt].plot([0, 733.314], [0.00112, 0.8408], color='dimgrey', linestyle='-', linewidth=1)
             parent.ax[self.currplt].plot([63.6623, 733.314], [1, 0.8408], color='dimgrey', linestyle='-', linewidth=1)
@@ -467,19 +457,15 @@ class kendrick(ui_plot): #plots mass defect vs nominal mass
 
 class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
-        ui_plot.__init__(self, parent, currplt, frame)
+        super().__init__(parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
 
     def plot(self, parent, file, filtereddfs, groupsets):
-        pqvar = '-logq'
-        if parent.analysis_paramsgui.FDR:
-            parent.ui.lbl_volcanowarn.setText('')
-        else:
-            parent.ui.lbl_volcanowarn.setText('False discovery rate correction off')
-            pqvar = '-logp'
-            
+        pqvar = '-logq' if parent.analysis_paramsgui.FDR else '-logp'
+        parent.ui.lbl_volcanowarn.setText('' if parent.analysis_paramsgui.FDR else 'False discovery rate correction off')
+
         querylist = parent.analysis_paramsgui.querylist
         iondict = pd.read_csv(file, sep = ',', header = [0], index_col = None)
         
@@ -493,52 +479,64 @@ class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
         iondict.to_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', header = True, index = False)
 
         maxpval = 0
-        for elem in filtereddfs: 
-            if parent.analysis_paramsgui.blnkfltr: 
-                filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']] 
-            if filtereddfs[elem][pqvar].max() > maxpval:
-                maxpval = filtereddfs[elem][pqvar].max()
+        for elem in filtereddfs:
+            if parent.analysis_paramsgui.blnkfltr:
+                filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']]
+            max_val = filtereddfs[elem][pqvar].max()
+            if max_val > maxpval:
+                maxpval = max_val
+                
             sig = filtereddfs[elem][filtereddfs[elem][pqvar] >= -np.log10(parent.analysis_paramsgui.pqthresh)]
-            sig = sig[sig['logfc'].abs() >= np.log2(parent.analysis_paramsgui.fcthresh)] 
+            sig = sig[sig['logfc'].abs() >= np.log2(parent.analysis_paramsgui.fcthresh)]
             nonsig = filtereddfs[elem][~filtereddfs[elem]['Compound'].isin(sig['Compound'].to_list())]
-            parent.ax[self.currplt].scatter(sig[sig['logfc'] > 0]['logfc'], sig[sig['logfc'] > 0][pqvar], color = 'red', picker=True, alpha=0.5)
-            parent.ax[self.currplt].scatter(sig[sig['logfc'] <= 0]['logfc'], sig[sig['logfc'] <= 0][pqvar], color = 'blue', picker=True, alpha=0.5)
-            parent.ax[self.currplt].scatter(nonsig['logfc'], nonsig[pqvar], color = 'black', picker=True, alpha=0.5)
             
+            parent.ax[self.currplt].scatter(sig[sig['logfc'] > 0]['logfc'], sig[sig['logfc'] > 0][pqvar], color='red', picker=True, alpha=0.5)
+            parent.ax[self.currplt].scatter(sig[sig['logfc'] <= 0]['logfc'], sig[sig['logfc'] <= 0][pqvar], color='blue', picker=True, alpha=0.5)
+            parent.ax[self.currplt].scatter(nonsig['logfc'], nonsig[pqvar], color='black', picker=True, alpha=0.5)
+        
         parent.highlight[self.currplt], = parent.ax[self.currplt].plot([], [], 'o', markersize=12, color='yellow')
+        
         parent.ax[self.currplt].plot([-np.log2(parent.analysis_paramsgui.fcthresh), -np.log2(parent.analysis_paramsgui.fcthresh)], [0, maxpval*1.2], color='dimgrey', linestyle='-', linewidth=1)
         parent.ax[self.currplt].plot([np.log2(parent.analysis_paramsgui.fcthresh), np.log2(parent.analysis_paramsgui.fcthresh)], [0, maxpval*1.2], color='dimgrey', linestyle='-', linewidth=1)
         parent.ax[self.currplt].plot([-6.75, 6.75], [-np.log10(parent.analysis_paramsgui.pqthresh), -np.log10(parent.analysis_paramsgui.pqthresh)], color='dimgrey', linestyle='-', linewidth=1)
-        parent.ax[self.currplt].set_xlabel("log2 fold change",  **self.fcsfont) #"$Log_2$" is code for subscript but is ital?
-        parent.ax[self.currplt].set_ylabel('-log10 '+pqvar[-1]+'-value',  **self.fcsfont)
+        
+        parent.ax[self.currplt].set_xlabel("log2 fold change", **self.fcsfont)
+        parent.ax[self.currplt].set_ylabel('-log10 ' + pqvar[-1] + '-value', **self.fcsfont)
         parent.ax[self.currplt].set_xlim(-6.75, 6.75)
+        
         try:
             parent.ax[self.currplt].set_ylim(0, maxpval*1.1)
         except Exception:
             parent.error('Warning: No volcano plot features generated, check test groups')
             pass
+        
         parent.ax[self.currplt].grid()
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('logfc', '-logq')))
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.15,top=0.9,
-                            hspace=0.2,wspace=0.2)
+        
+        def on_pick_event(event):
+            self.onpick(event, parent, iondict, ('logfc', '-logq'))
+        
+        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', on_pick_event)
+        
+        parent.fig[self.currplt].subplots_adjust(left=.1, right=.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
  
-class plot_fc3d(ui_plot):   # 3d mass, retention time, fold change plot, not currently highlightable
+class plot_fc3d(ui_plot):
+    """3D mass, retention time, fold change plot, not currently highlightable"""
+
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
 
-    def plot(self, parent, file, filtereddfs, groupsets): 
-        iondict = pd.read_csv(file, sep = ',', header = [0], index_col = None)
+    def plot(self, parent, file, filtereddfs, groupsets):
+        iondict = pd.read_csv(file, sep=',', header=[0], index_col=None)
         for elem in parent.analysis_paramsgui.querylist:
             if parent.analysis_paramsgui.blnkfltr:
-                filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']] # check why this is here
+                filtereddfs[elem] = filtereddfs[elem][filtereddfs[elem]['pass_blnkfil']]
             filtereddfs[elem] = listfilter(iondict, groupsets[elem].ionlist, True)
-            filtereddfs[elem]['logfc'] = np.log2(filtereddfs[elem]['fc'])#dothis inthe main function
-        
+            filtereddfs[elem]['logfc'] = np.log2(filtereddfs[elem]['fc'])
+
         parent.ax[self.currplt].remove()
         parent.ax[self.currplt] = parent.canvas[self.currplt].figure.add_subplot(111, projection='3d')
         parent.ax[self.currplt].set_axisbelow(True)
@@ -546,150 +544,146 @@ class plot_fc3d(ui_plot):   # 3d mass, retention time, fold change plot, not cur
             x = filtereddfs[elem]['logfc']
             z = filtereddfs[elem]['m/z']
             y = filtereddfs[elem]['Retention time (min)']
-            parent.ax[self.currplt].scatter(x, y, z, color = str(groupsets[elem].plotcol), marker='o', label = str(groupsets[elem].legendname))    
+            parent.ax[self.currplt].scatter(x, y, z, color=str(groupsets[elem].plotcol), marker='o', label=str(groupsets[elem].legendname))
         parent.canvas[self.currplt].figure.set_facecolor(self.plotbackground)
         parent.ax[self.currplt].set_facecolor(self.plotbackground)
-        parent.ax[self.currplt].set_xlabel('log2 fold change',  **self.fcsfont, labelpad=20)
-        parent.ax[self.currplt].set_ylabel('Retention time (min)',  **self.fcsfont, labelpad=20)
-        parent.ax[self.currplt].set_zlabel('m/z',  **self.fcsfont, labelpad=25)
+        parent.ax[self.currplt].set_xlabel('log2 fold change', **self.fcsfont, labelpad=20)
+        parent.ax[self.currplt].set_ylabel('Retention time (min)', **self.fcsfont, labelpad=20)
+        parent.ax[self.currplt].set_zlabel('m/z', **self.fcsfont, labelpad=25)
         parent.ax[self.currplt].tick_params(axis='z', pad=10)
-        parent.ax[self.currplt].set_ylim(-.5, 11.5)
+        parent.ax[self.currplt].set_ylim(-0.5, 11.5)
         parent.ax[self.currplt].grid()
         parent.ax[self.currplt].legend()
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.15,top=0.9,
-                            hspace=0.2,wspace=0.2)
+        parent.fig[self.currplt].subplots_adjust(
+            left=0.1, right=0.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
 
-class plot_dendrogram(ui_plot): # dendrogram generation
+class plot_dendrogram(ui_plot):
+    """Dendrogram generation."""
+
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
-    
+
     def plot(self, parent, file, filtereddfs, groupsets):
-        heirarch = pd.read_csv(file, sep = ',', header = [2], index_col = [0]).drop(['m/z', 'Retention time (min)'], axis=1)
-        data_scaled = normalize(heirarch, axis = 0) #normalize features
+        heirarch = pd.read_csv(file, sep=',', header=[2], index_col=[0]).drop(['m/z', 'Retention time (min)'], axis=1)
+        data_scaled = normalize(heirarch, axis=0)  # normalize features
         data_scaled = pd.DataFrame(data_scaled, columns=heirarch.columns, index=heirarch.index)
-        textlabels = []
-        for elem in data_scaled.columns.tolist(): #to cut off dates, probably exclude this in final release
-            #textlabels.append(elem[7:])
-            textlabels.append(elem)
+        textlabels = [elem for elem in data_scaled.columns.tolist()]
             
         if parent.analysis_paramsgui.bootstrap:
-            #bootstrap dendrogram
-            pv = PvClust(data_scaled, method="ward", metric="euclidean", nboot=1000,
-                         parallel=False)
-            dend = pv.plot(parent.ax[self.currplt], labels = textlabels)
+            # bootstrap dendrogram
+            pv = PvClust(data_scaled, method="ward", metric="euclidean", nboot=1000, parallel=True)
+            dend = pv.plot(parent.ax[self.currplt], labels=textlabels)
         else:
-            #regular dendrogram
-            dend = shc.dendrogram(shc.linkage(data_scaled.transpose(), method='ward'), ax = parent.ax[self.currplt], leaf_rotation=90, color_threshold=0, above_threshold_color = 'black', labels = textlabels) #default leaf label size 16
-        
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
-                            bottom=0.35,top=0.9,
-                            hspace=0.2,wspace=0.2)
+            # regular dendrogram
+            dend = shc.dendrogram(shc.linkage(data_scaled.transpose(), method='ward'), ax=parent.ax[self.currplt], leaf_rotation=90, color_threshold=0, above_threshold_color='black', labels=textlabels)  # default leaf label size 16
+
+        parent.fig[self.currplt].subplots_adjust(
+            left=0.1, right=0.95, bottom=0.35, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
 
-class plot_PCA(ui_plot): #plots NMDS data
-        # should include opion to allow user specified pca colors
-        # need to fix selection of samples on PCA plot
-        # should add PCA vs NMDS option
+class plot_PCA(ui_plot):
+            #plots NMDS data
+            # should include opion to allow user specified pca colors
+            # need to fix selection of samples on PCA plot
+            # should add PCA vs NMDS option
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
-        
+
     def plot(self, parent, file, filtereddfs, groupsets):
+        parent = self.parent
         parent.collapsereps = parent.dialog.ui.checkBox_collapsereps.isChecked()
-        if parent.collapsereps: #if replicate collapse is selected average techreps
-            msdata = pd.read_csv(file, sep = ',', header = [0, 1, 2], index_col = [0, 1, 2]) #imports data
-            msdata = msdata.stack([0,1,2]) #following has to do some header reformatting
-            msdata =  msdata.groupby(level = [0,1,2,3,4]).mean().unstack(level = [-1,-2])
-            test2 =msdata.columns.to_list()
+        
+        if parent.collapsereps:
+            # Average techreps if replicate collapse is selected
+            msdata = pd.read_csv(file, sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+            msdata = msdata.stack([0, 1, 2])
+            msdata = msdata.groupby(level=[0, 1, 2, 3, 4]).mean().unstack(level=[-1, -2])
+            test2 = msdata.columns.to_list()
             msdata = msdata.reset_index()
             header = [('','','Compound'), ('','','m/z'), ('','','Retention time (min)')]
-            for elem in test2: #rename test2
+            for elem in test2:
                 header.append((elem[1], '', elem[0]))
             msdata.columns = pd.MultiIndex.from_tuples(header)
-            msdata.to_csv('averagepca.csv', header = True, index = False)
-        
-            msdata_header = pd.read_csv('averagepca.csv', sep = ',', header = None, index_col = [0,1,2]).iloc[:3,:].transpose()
-            pcadf = pd.read_csv('averagepca.csv', sep = ',', header = [2], index_col = [0]).drop(['m/z', 'Retention time (min)'], axis=1).transpose().astype(float).reset_index().rename(columns={'index': 'File'})### added astype float to work with integer measurement data
+            msdata.to_csv('averagepca.csv', header=True, index=False)
+
+            msdata_header = pd.read_csv('averagepca.csv', sep=',', header=None, index_col=[0, 1, 2]).iloc[:3, :].transpose()
+            pcadf = pd.read_csv('averagepca.csv', sep=',', header=[2], index_col=[0]).drop(['m/z', 'Retention time (min)'], axis=1).transpose().astype(float).reset_index().rename(columns={'index': 'File'})
         else:
-            msdata_header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = None, index_col = [0,1,2]).iloc[:3,:].transpose() 
-            pcadf = pd.read_csv(file, sep = ',', header = [2], index_col = [0]).drop(['m/z', 'Retention time (min)'], axis=1).transpose().astype(float).reset_index().rename(columns={'index': 'File'}) #### added astype float to work with integer measurement data
+            msdata_header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=None, index_col=[0, 1, 2]).iloc[:3, :].transpose() 
+            pcadf = pd.read_csv(file, sep=',', header=[2], index_col=[0]).drop(['m/z', 'Retention time (min)'], axis=1).transpose().astype(float).reset_index().rename(columns={'index': 'File'})
 
         components = len(msdata_header.index)
         if components > 10:
             components = 10
-        msdata_header.columns = ['Biolgroup', 'Sample', 'Injection'] #could clean up this section for color assignment
+        msdata_header.columns = ['Biolgroup', 'Sample', 'Injection']
         msdata_header = msdata_header.set_index('Injection')
-        colors, colorpos, biolgroupmap = ['red','blue','black','grey','purple','orange','green','yellow','lime', 'plum', 'teal', 'olivedrab', 'sienna', 'maroon', 'navy', 'lightcoral', 'darkgoldenrod', 'seagreen', 'lightseagreen','aqua','lightsteelblue','slateblue','blueviolet','plum','burlywood','salmon','aquamarine','magenta','tan'], 0, {}
+        colors = ['red', 'blue', 'black', 'grey', 'purple', 'orange', 'green', 'yellow', 'lime', 'plum', 'teal', 'olivedrab', 'sienna', 'maroon', 'navy', 'lightcoral', 'darkgoldenrod', 'seagreen', 'lightseagreen', 'aqua', 'lightsteelblue', 'slateblue', 'blueviolet', 'plum', 'burlywood', 'salmon', 'aquamarine', 'magenta', 'tan']
+        colorpos, biolgroupmap = 0, {}
         for elem in msdata_header['Biolgroup']:
             if elem not in biolgroupmap and elem != parent.analysis_paramsgui.blnkgrp: ###### delete blank clause OR CHANGE TO THE BLNKFILTER OPTION
                 biolgroupmap[elem] = colors[colorpos]
                 colorpos += 1
-        
-        features = list(pcadf.columns.values)[1:]
-        x = pcadf.loc[:, features].values
-        y = pcadf.loc[:,['File']].values
-        x -= x.mean()#.astype(int) #remove this!!!!astypent this was need to prevent trowing anerror with bruker data
+                
+        features = pcadf.columns.values[1:]
+        x = pcadf[features].values
+        y = pcadf[['File']].values
+        x -= x.mean()
         similarities = pairwise_distances(x, metric='braycurtis')
-    
+        
         mds = manifold.MDS(n_components=components, max_iter=3000, eps=1e-9, random_state=1,
-                   dissimilarity="precomputed", n_jobs=1)
+                           dissimilarity="precomputed", n_jobs=1)
         pos = mds.fit(similarities).embedding_
         
         nmds = manifold.MDS(n_components=components, metric=False, max_iter=3000, eps=1e-12,
-                    dissimilarity="precomputed", random_state=1, n_jobs=1,
-                    n_init=1)
+                            dissimilarity="precomputed", random_state=1, n_jobs=1,
+                            n_init=1)
         npos = nmds.fit_transform(similarities, init=pos)
-
-        pca = PCA(n_components = components)
+        
+        pca = PCA(n_components=components)
         nmdspc = pca.fit_transform(npos)
         expvar = pca.explained_variance_ratio_
-        pcadftest = pd.DataFrame(data = nmdspc)
-
-        ncomplist = []
-        for elem in range(0,components):
-            ncomplist.append(elem)
-        nmdspc = pd.DataFrame(data = nmdspc, columns = ncomplist)
+        pcadftest = pd.DataFrame(data=nmdspc)
+        
+        ncomplist = list(range(components))
+        nmdspc = pd.DataFrame(data=nmdspc, columns=ncomplist)
         nmdspc['File'] = pcadf['File']
-        pos, samplesdone =0, []
         nmdspc['Biolgroup'] = ''
-        for elem in nmdspc.iloc[:, components]:
-            nmdspc.iloc[pos, components + 1] = msdata_header.loc[elem, 'Biolgroup']
-            pos+=1
+        for i, elem in enumerate(nmdspc.iloc[:, components]):
+            nmdspc.iloc[i, components + 1] = msdata_header.loc[elem, 'Biolgroup']
         principalDf = nmdspc.set_index('File')
                 
         for elem in biolgroupmap:
             scatterframe = principalDf[principalDf['Biolgroup'] == elem]
-            points = scatterframe.iloc[:,[0,1]].to_numpy() #not sure why i cant use.loc for this block, throws index not found error? used to use x and y.
+            points = scatterframe.iloc[:,[0,1]].to_numpy()
             if np.shape(points)[0] > 2:
-                self.plot_point_cov(points, nstd=2, ax = parent.ax[self.currplt], alpha=0.5, color = self.lighten_color(biolgroupmap[elem], 0.3))
-            parent.ax[self.currplt].scatter(scatterframe.iloc[:,0], scatterframe.iloc[:,1], color = biolgroupmap[elem], marker='o', s = 30, label = str(elem), picker=True)
+                self.plot_point_cov(points, nstd=2, ax=parent.ax[self.currplt], alpha=0.5, color=self.lighten_color(biolgroupmap[elem], 0.3))
+            parent.ax[self.currplt].scatter(scatterframe.iloc[:,0], scatterframe.iloc[:,1], color=biolgroupmap[elem], marker='o', s=30, label=str(elem), picker=True)
+        
         parent.highlight[self.currplt], = parent.ax[self.currplt].plot([], [], 'o', markersize=12, color='yellow')
-        parent.ax[self.currplt].set_xlabel('NMDS1',  **self.fcsfont) # (' + str(round(100*expvar[0], 2)) + '%)'
-        parent.ax[self.currplt].set_ylabel('NMDS2',  **self.fcsfont) #(' + str(round(100*expvar[1], 2)) + '%)'
+        parent.ax[self.currplt].set_xlabel('NMDS1', **self.fcsfont) # (' + str(round(100*expvar[0], 2)) + '%)'
+        parent.ax[self.currplt].set_ylabel('NMDS2', **self.fcsfont) #(' + str(round(100*expvar[1], 2)) + '%)'
         
         #following two lines put a hard limit on the axis tick distance
         #parent.ax[self.currplt].xaxis.set_major_locator(ticker.MultipleLocator(0.1))
         #parent.ax[self.currplt].yaxis.set_major_locator(ticker.MultipleLocator(0.1))
         
-        def picksample(event): #fixthis
+        def picksample(event): # fix this
             ind = event.ind
             coord = event.artist.get_offsets()[ind,:]
             parent.pickedsample = principalDf.loc[principalDf['0'] == coord[0,0], :].loc[principalDf['1'] == coord[0,1], :].reset_index()
             parent.ui.lbl_injname.setText('Injection/Sample: ' + str(parent.pickedsample.iloc[0,0]))
             parent.highlight[self.currplt].set_data(coord[0,0],coord[0,1])
             parent.canvas[self.currplt].draw_idle()
-            
+        
         parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', picksample)
-        parent.fig[self.currplt].subplots_adjust(left=.1,right=.9,
-                            bottom=0.1,top=0.9,
-                            hspace=0.2,wspace=0.2)
+        parent.fig[self.currplt].subplots_adjust(left=.1, right=.9, bottom=0.1, top=0.9, hspace=0.2, wspace=0.2)
         #x0,x1 = parent.ax[self.currplt].get_xlim()
         #0,y1 = parent.ax[self.currplt].get_ylim()
         #parent.ax[self.currplt].set_aspect(abs(x1-x0)/abs(y1-y0))
@@ -697,32 +691,31 @@ class plot_PCA(ui_plot): #plots NMDS data
         parent.ax[self.currplt].legend()
         parent.canvas[self.currplt].draw()
     
-        #following handles confidence interval generation
-    def plot_point_cov(self, points, nstd=2, ax=None, **kwargs): #gets point values
+    def plot_point_cov(self, points, nstd=2, ax=None, **kwargs):
+        """Generate ellipse for the confidence interval"""
         pos = points.mean(axis=0)
         cov = np.cov(points, rowvar=False)
         return self.plot_cov_ellipse(cov, pos, nstd, ax, **kwargs)
-    
-    def lighten_color(self, color, amount=0.5): #lightens color of ellipse by 50%
-        import matplotlib.colors as mc
-        import colorsys
+
+    def lighten_color(self, color, amount=0.5):
+        """Lighten the color of the ellipse by a given amount"""
         try:
             c = mc.cnames[color]
         except:
             c = color
         c = colorsys.rgb_to_hls(*mc.to_rgb(c))
         return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
-    
-    def plot_cov_ellipse(self, cov, pos, nstd=2, ax=None, **kwargs): #generatates optimized ellipse
-        
+
+    def plot_cov_ellipse(self, cov, pos, nstd=2, ax=None, **kwargs):
+        """Generate optimized ellipse for the confidence interval"""
         def eigsorted(cov):
             vals, vecs = np.linalg.eigh(cov)
             order = vals.argsort()[::-1]
             return vals[order], vecs[:,order]
-    
+
         if ax is None:
             ax = plt.gca()
-            
+
         vals, vecs = eigsorted(cov)
         theta = np.degrees(np.arctan2(*vecs[:,0][::-1]))
         width, height = 2 * nstd * np.sqrt(vals)
@@ -730,37 +723,40 @@ class plot_PCA(ui_plot): #plots NMDS data
         ax.add_artist(ellip)
         return ellip
  
-class prev_cv(ui_plot): # CV rarifactions plot with mean and median CV
+class prev_cv(ui_plot):
+    # CV rarifactions plot with mean and median CV
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
-        ui_plot.__init__(self, parent, currplt, frame)
+        super().__init__(parent, currplt, frame)
         self.parent = parent
         self.currplt = currplt
         self.plot(parent, file, filtereddfs, groupsets)
-        
+
     def plot(self, parent, file, filtereddfs, groupsets):
-        # sorts and saves mean and median CV DFs
-        iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', header = [0], index_col = [0])
+        # Load and filter ion data
+        iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', header=0, index_col=0)
         iondict = iondict[~np.isnan(iondict['average CV'])]
-        iondictmean = iondict.sort_values(['average CV'], ascending=[1]).reset_index()
-        iondictmed = iondict.sort_values(['median CV'], ascending=[1]).reset_index()
+
+        # Calculate mean and median CV, and scale data
+        iondictmean = iondict.sort_values(['average CV']).reset_index()
+        iondictmed = iondict.sort_values(['median CV']).reset_index()
         iondictmean = iondictmean.reset_index()
         iondictmed = iondictmed.reset_index()
         iondictmean.iloc[:,0] = 100 * iondictmean.iloc[:,0]/len(iondictmean['average CV'])
         iondictmed.iloc[:,0] = 100 * iondictmed.iloc[:,0]/len(iondictmed['median CV'])
-    
-        # Calculates maximum theoretical CV based on neff, maybe change to just use max value, not sure
-        msdata_header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = None, index_col = [0,1,2]).iloc[:3,:].transpose()
+
+        # Calculate maximum theoretical CV based on neff
+        msdata_header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=None, index_col=[0,1,2]).iloc[:3,:].transpose()
         msdata_header.columns = ['Biolgroup', 'Sample', 'Injection']
-        iondict_sorted = iondictmean
-        average_n = msdata_header['Injection'].nunique()/msdata_header['Sample'].nunique()
-        modelstdevlist = [1]
-        for num in range(1, int(average_n)):
-            modelstdevlist.append(0)
-        modelstdev = pd.Series(modelstdevlist).std()/pd.Series(modelstdevlist).mean()
-        cv50 = iondict_sorted.iloc[(iondict_sorted.iloc[:,0]-50).abs().argsort()[:1]]['average CV']
-        qualscore = float(round(100*(1-cv50/modelstdev),1)) #generates currently unused quality score
+        average_n = msdata_header['Injection'].nunique() / msdata_header['Sample'].nunique()
+        modelstdevlist = [1] + [0] * (int(average_n) - 1)
+        modelstdev = pd.Series(modelstdevlist).std() / pd.Series(modelstdevlist).mean()
+        cv50 = iondictmean.iloc[(iondictmean.iloc[:,0] - 50).abs().argsort()[:1]]['average CV']
+        qualscore = round(100 * (1 - cv50 / modelstdev), 1)
+
+        # Update UI
         parent.ui.lbl_spllist_3.setText('Overall: ' + str(qualscore)  + '%')
-        
+
+        # Plot data
         currplt = 'cvplt' #instead take this from input
         parent.ax[currplt].plot(iondictmed['median CV'], iondictmed.iloc[:,0], color = '#0000ff', label="Median CV")
         parent.ax[currplt].plot(iondictmean['average CV'], iondictmed.iloc[:,0], color = 'red', label="Mean CV")
@@ -778,10 +774,14 @@ class prev_cv(ui_plot): # CV rarifactions plot with mean and median CV
                             bottom=.15,top=.85,
                             hspace=10,wspace=10)
         parent.canvas[currplt].draw()
+
     
-def gen_upsetplt(parent): #upset plot to visualize sets of compounds in groups
-        #need to do something to handle groups with names that are substrings of other group names
-    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
+def gen_upsetplt(parent):
+    #upset plot to visualize sets of compounds in groups
+    #need to do something to handle groups with names that are substrings of other group names
+    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=0, index_col=None)
+
+    # Apply filters if required
     if parent.analysis_paramsgui.relfil:
         iondict = iondict[iondict['pass_relfil']]
     if parent.analysis_paramsgui.decon:
@@ -790,73 +790,82 @@ def gen_upsetplt(parent): #upset plot to visualize sets of compounds in groups
         iondict = iondict[iondict['pass_blnkfil']]
     if parent.analysis_paramsgui.CVfil:
         iondict = iondict[iondict['pass_cvfil']]
-    iongroups = iondict['groups'].to_list()
-    freq, biolgroups, sets = {}, [], []
-    for item in iongroups: 
-        if (item not in freq): 
+
+    # Prepare data for upset plot
+    iongroups = iondict['groups'].tolist()
+    freq = {}
+    biolgroups = []
+    for item in iongroups:
+        if item not in freq:
             freq[item] = 0
         freq[item] += 1
-    
-    header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = None, index_col = [0,1,2]).iloc[0,:]
+
+    header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=None, index_col=[0, 1, 2]).iloc[0, :]
     for elem in header:
         if elem not in biolgroups:
             biolgroups.append(elem)
-    
-    for elem in list(freq.keys()): #have to do this if one group is a substring of another, add space
-        sets.append(' ' + elem)
+
+    sets = [' ' + elem for elem in list(freq.keys())]
     size = list(freq.values())
-    setdf = pd.DataFrame({'groups':sets})
-    for elem in biolgroups:
+    setdf = pd.DataFrame({'groups': sets})
+    for elem in biolgroups:  #have to do this if one group is a substring of another, add space
         setdf[elem] = setdf['groups'].str.contains(' ' + elem)
     setdf['size'] = size
-    setdf = setdf.iloc[:,1:]
+    setdf = setdf.iloc[:, 1:]
     setdf = setdf.set_index(biolgroups)['size']
-    
-    with plt.rc_context({"font.size"   : 8}):
+
+    # Plot and display the upset plot
+    with plt.rc_context({"font.size": 8}):
         upsetplt = upsetplot.plot(setdf, show_counts='%d', show_percentages=True, sort_categories_by=None)
+
     figup = upsetplt['matrix'].figure
     figup.set_size_inches(5, 4)
-    #upsetplt['matrix'].yaxis.tick_right()
-    figup.set_facecolor((0,0,0,0))
-    upsetplt['intersections'].set_facecolor((1,1,1,.25))
+    figup.set_facecolor((0, 0, 0, 0))
+    upsetplt['intersections'].set_facecolor((1, 1, 1, .25))
     figup.savefig('test_upsetplt.png', dpi=150, bbox_inches='tight')
     pixmap = QPixmap('test_upsetplt.png')
     parent.ui.label_upset.setPixmap(pixmap)
     
-def gen_treemap(parent): #generate treemap for visualization of filtering levels
-        #needed to refilter data and see how df row lengths change to avoid issues with one feature being in multiple filter lists
+    
+def gen_treemap(parent):
+    #generate treemap for visualization of filtering levels
+    #needed to refilter data and see how df row lengths change to avoid issues with one feature being in multiple filter lists
     plt.clf()
-    msdata_filtered = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])#need to change this to get original file...
+    msdata_filtered = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
     fltrcnt, color = {}, []
-    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
+    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
     total = len(iondict.index)
     current = total
+    
     if parent.analysis_paramsgui.relfil:
         filteredsetsize = len(iondict[iondict['pass_relfil']].index)
         fltrcnt['Mispicked'] = current - filteredsetsize
         current = filteredsetsize
         color.append('#0000ff')
+    
     if parent.analysis_paramsgui.blnkfltr:
         filteredsetsize = len(iondict[iondict['pass_blnkfil']].index)
         fltrcnt['Blank'] = current - filteredsetsize
         current = filteredsetsize
         color.append('#00aaaa')
-    if parent.analysis_paramsgui.CVfil:#needed to use ionlist instead of filtering down like others, not sure why
+    
+    if parent.analysis_paramsgui.CVfil:
         fltrcnt['Nonreproducible'] = len(parent.ionfilters['cv'].ions)
         current = current - fltrcnt['Nonreproducible']
         color.append('#ff0000')
-    if parent.analysis_paramsgui.decon: #this only works if the deconvolution is done on the filtered dataset, not unfiltered!
+    
+    if parent.analysis_paramsgui.decon:
         fltrcnt['Insource'] = len(parent.ionfilters['insource'].ions)
         color.append('#00aa00')
+    
     fltrcnt['High Quality'] = len(msdata_filtered.index)
     color.append('#000000')
 
-    sizes=list(fltrcnt.values())
-    totalsize = sum(fltrcnt.values())
-    label=list(fltrcnt.keys())
-    for pos in range(0,len(label)):
-        label[pos] = label[pos] + '\n' + str(sizes[pos]) + '\n' + str(round(100*sizes[pos]/totalsize,1)) + '%'
-    squarify.plot(sizes=sizes, label=label, color=color, alpha=0.3, text_kwargs={'fontsize':10})
+    sizes = list(fltrcnt.values())
+    total_size = sum(fltrcnt.values())
+    labels = [f"{label}\n{size}\n{round(100*size/total_size,1)}%" for label, size in fltrcnt.items()]
+
+    squarify.plot(sizes=sizes, label=labels, color=color, alpha=0.3, text_kwargs={'fontsize': 10})
     plt.axis('off')
     plt.savefig('treemap.png', dpi=150, bbox_inches='tight')
     pixmap = QPixmap('treemap.png')

@@ -2,15 +2,16 @@
 MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
-# CHECK/IMPORT DEPENDENCIES
-from importdependencies import checkdep
-checkdep()
 
 ## ==> GUI FILE
 from main import MainWindow, query, start_functime, stop_functime, reset_runtime, ftrdialog, dialog
 #import masstdriver #from old version of masst search push
 import webbrowser #may not be needed now
 from mzmineimport import format_check
+
+# CHECK/IMPORT DEPENDENCIES
+from importdependencies import checkdep
+checkdep()
 
 import sys
 import pandas as pd
@@ -31,6 +32,7 @@ import files
 from MSFaST import analysis_parameters
 
 import os
+
 
 
 
@@ -60,7 +62,7 @@ class UIFunctions(MainWindow):
             GLOBAL_STATE = 0
             self.showNormal()
             self.resize(self.width()+1, self.height()+1)
-#           self.ui.drop_shadow_layout.setContentsMargins(10, 10, 10, 10) #not sure about this one throws error when run, may cut
+            #self.ui.drop_shadow_layout.setContentsMargins(10, 10, 10, 10) #not sure about this one throws error when run, may cut
             self.ui.drop_shadow_frame.setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(34, 34, 34, 255), stop:1 rgba(52, 52, 52, 255));")
             self.ui.btn_maximize.setToolTip("Maximize")
             
@@ -122,8 +124,8 @@ class UIFunctions(MainWindow):
         self.ftrdialog.ui.btn_abund.clicked.connect(lambda: UIFunctions.goto_abund(self))
         self.ftrdialog.ui.btn_spectrum.clicked.connect(lambda: UIFunctions.goto_spectrum(self)) 
         self.ftrdialog.ui.btn_masst.clicked.connect(lambda: UIFunctions.masst(self)) 
-        self.ui.btn_details.clicked.connect(lambda: self.ftrdialog.show()) 
-        self.ui.btn_details_2.clicked.connect(lambda: self.ftrdialog.show()) 
+        self.ui.btn_details.clicked.connect(lambda: UIFunctions.show_ftrdialog(self)) 
+        self.ui.btn_details_2.clicked.connect(lambda: UIFunctions.show_ftrdialog(self)) 
         
         #input functions
         self.ui.btn_load_session.clicked.connect(lambda: UIFunctions.loadsession(self))
@@ -275,12 +277,13 @@ class UIFunctions(MainWindow):
     def goto_abund(self):
         self.ftrdialog.ui.btn_masst.hide()
         self.ftrdialog.ui.stackedWidget.setCurrentIndex(2)
-        UIFunctions.reset_ftrdialogbar(self)
+        self.highlight_feature(self.pickedfeature)
         self.ftrdialog.ui.btn_abund.setStyleSheet(self.ui.ftbar_activebtn)
-    
+        
     def goto_hits(self):
         self.ftrdialog.ui.btn_masst.hide()
         self.ftrdialog.ui.stackedWidget.setCurrentIndex(0)
+        self.highlight_feature(self.pickedfeature)
         UIFunctions.reset_ftrdialogbar(self)
         self.ftrdialog.ui.btn_hits.setStyleSheet(self.ui.ftbar_activebtn)
         
@@ -312,91 +315,80 @@ class UIFunctions(MainWindow):
         color = QColorDialog.getColor()
         self.querys[self.selset].colour = color.name() 
         self.ui.btn_col1.setStyleSheet("QPushButton {border: 2px solid lightgrey; background-color: " + str(self.querys[self.selset].colour) +";}")
-
-    def updatesets(self): #update the groupsets list, updates the group lists based on this
-        selitem = self.ui.listWidget_pltgrps.currentRow() - 1 #this is probably where the out of range error comes from
-        if selitem < 0:
-            selitem == 0
+    
+    def updatesets(self):
+        selitem = self.ui.listWidget_pltgrps.currentRow() - 1
+        selitem = max(selitem, 0)
         
-        listItems = []
-        for x in range(0, self.ui.listWidget_pltgrps.count()):
-            listItems.append(self.ui.listWidget_pltgrps.item(x))
-        for item in listItems:
-            self.ui.listWidget_pltgrps.takeItem(self.ui.listWidget_pltgrps.row(item))
-        
+        self.ui.listWidget_pltgrps.clear()
         for query in self.querys:
             item = QListWidgetItem(query.name)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable) #needed to make item seperately and set editable flag before adding or else sets from save files were uneditable
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
             self.ui.listWidget_pltgrps.addItem(item)
-        #self.ui.listWidget_pltgrps.setCurrentItem(self.querys[selitem].name) #NEED TO CHANGE. Originally .name was the actual qlistwidgetitem object for the groupset but this was unpickleable, switched to the text name. Now saved as text of name. need to find way to update current list item
+    
+        self.ui.listWidget_pltgrps.setCurrentRow(selitem)
         UIFunctions.updategroups(self)
-
-    def updategroups(self): #updates the inclusion, exclusion, src group lists
+        
+    
+    def updategroups(self):
+        selgroup = self.ui.listWidget_pltgrps.currentRow()
+        self.selset = selgroup
+    
         self.ui.listWidget_allgrps.clear()
         self.ui.listWidget_orgrps.clear()
         self.ui.listWidget_andgrps.clear()
-
-        selgroup = self.ui.listWidget_pltgrps.currentRow()
-        self.selset = selgroup
-        
+    
         for group in self.querys[selgroup].excl:
             self.ui.listWidget_allgrps.addItem(QListWidgetItem(group))
         for group in self.querys[selgroup].src:
             self.ui.listWidget_orgrps.addItem(QListWidgetItem(group))
         for group in self.querys[selgroup].incl:
             self.ui.listWidget_andgrps.addItem(QListWidgetItem(group))
-            
-        self.ui.btn_col1.setStyleSheet("QPushButton {border: 2px solid lightgrey; background-color: " + str(self.querys[self.selset].colour) +";}")
-            
-        
-    def writegroups(self): #writes all groupsets and their component groups to database 
-        #print('writegroups?')
-        #print(isinstance(self.selset, int) and self.selset <= self.ui.listWidget_allgrps.count())
-        #print('')
-        #print(self.selset)
-        if self.selset>-1 and self.selset <= self.ui.listWidget_pltgrps.count():
+    
+        self.ui.btn_col1.setStyleSheet(
+            "QPushButton {border: 2px solid lightgrey; background-color: " + 
+            str(self.querys[self.selset].colour) +";}"
+        )
+    
+    def writegroups(self):
+        if 0 <= self.selset < self.ui.listWidget_pltgrps.count():
             try:
                 self.querys[self.selset].name = self.ui.listWidget_pltgrps.item(self.selset).text()
             except Exception:
                 pass
-            self.querys[self.selset].excl = []
-            self.querys[self.selset].src = []
-            self.querys[self.selset].incl = []
-            for x in range(0, self.ui.listWidget_allgrps.count()):
-                self.querys[self.selset].excl.append(self.ui.listWidget_allgrps.item(x).text())
-            for x in range(0, self.ui.listWidget_orgrps.count()):
-                self.querys[self.selset].src.append(self.ui.listWidget_orgrps.item(x).text())
-            for x in range(0, self.ui.listWidget_andgrps.count()):
-                self.querys[self.selset].incl.append(self.ui.listWidget_andgrps.item(x).text())
-        #print(self.selset)
-        #print(type(self.selset))
-        #print(self.querys[self.selset].src)
-        #print(self.querys[self.selset].incl)
-        #print(self.querys[self.selset].excl)
-        #print('')
-        #print('')
+    
+            self.querys[self.selset].excl = [self.ui.listWidget_allgrps.item(x).text() for x in range(self.ui.listWidget_allgrps.count())]
+            self.querys[self.selset].src = [self.ui.listWidget_orgrps.item(x).text() for x in range(self.ui.listWidget_orgrps.count())]
+            self.querys[self.selset].incl = [self.ui.listWidget_andgrps.item(x).text() for x in range(self.ui.listWidget_andgrps.count())]
+    
         UIFunctions.updategroups(self)
         
-    def addgroup(self): #adds a new groupset
+        
+    def addgroup(self):
         item = QListWidgetItem('New Feature Set')
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         self.ui.listWidget_pltgrps.addItem(item)
+        
         currquery = query()
         currquery.name = item.text()
         currquery.src = []
         currquery.incl = []
         currquery.excl = []
         currquery.color = '#000000'
+        
         for group in self.groups:
-            groupitem = QListWidgetItem(group)
             currquery.excl.append(group)
+            
         self.querys.append(currquery)
         self.ui.listWidget_pltgrps.setCurrentItem(item)
+
             
-    def removegroup(self): #removes a groupset
-        selitem=self.ui.listWidget_pltgrps.currentRow()
+    def removegroup(self):
+        selitem = self.ui.listWidget_pltgrps.currentRow()
         self.querys.remove(self.querys[selitem])
         UIFunctions.updatesets(self)
+        
+        
         
     #import buttons
     def loadsession(self): #gets save file, calls read_save method in main, updates UI elements
@@ -549,3 +541,7 @@ class UIFunctions(MainWindow):
         self.ftrdialog.ui.btn_spectrum.setStyleSheet(self.ui.ftbar_inactivebtn)
         self.ftrdialog.ui.btn_abund.setStyleSheet(self.ui.ftbar_inactivebtn)
     
+    def show_ftrdialog(self):
+        self.ftrdialog.show()
+        self.highlight_feature(self.pickedfeature)
+

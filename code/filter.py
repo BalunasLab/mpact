@@ -35,117 +35,174 @@ def reformatcorr(corr): #reformatts correlation matrix to generate a list from s
     reformatted = 1-np.where(reformatted<0, 0, reformatted)
     return(reformatted)
 
-def decon(analysis_params, ionfilters): #in source ion filter based on correlation matrix deconvolution
-            # need to save in source spectra
-    msdata_ind  = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = [0,1]).iloc[:,:1]
+
+
+
+def decon(analysis_params, ionfilters):
+    # Read in data
+    msdata_ind = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                             sep=',', header=[2], index_col=[0, 1]).iloc[:, :1]
     rtlist = msdata_ind['Retention time (min)'].unique()
-    msdata_ind = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = [0]).iloc[:,:2]
-    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = [0]).iloc[:,2:]
-    
+    msdata_ind = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                             sep=',', header=[2], index_col=[0]).iloc[:, :2]
+    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                         sep=',', header=[2], index_col=[0]).iloc[:, 2:]
+
+    # Initialize variables
     singleslist = []
     insourcelist = []
     clusterlist = []
     clusterdfs = []
-    filtereddf = msdata_ind 
+    filtereddf = msdata_ind
     ftrgrps = {}
+
+    # Loop through retention times
     for elem in rtlist:
-        filtereddf = msdata_ind.loc[msdata_ind.iloc[:,1] == elem, :]
+        filtereddf = msdata_ind.loc[msdata_ind.iloc[:, 1] == elem, :]
+
         if len(filtereddf.index) == 1:
             singleslist.append(filtereddf.index.to_list()[0])
         else:
+            # Perform deconvolution
             unseplist = filtereddf.index.tolist()
             filtereddf2 = msdata.loc[unseplist, :].transpose()
             corr = filtereddf2.corr()
             corr2 = reformatcorr(corr)
             linkage = spc.linkage(corr2, method='complete')
             np.clip(linkage, 0, None, linkage)
-            idx = spc.fcluster(linkage, 1-analysis_params.deconthresh, 'distance')
-            
+            idx = spc.fcluster(linkage, 1 - analysis_params.deconthresh, 'distance')
+
+            # Group peaks by cluster
             decongroups = {}
             for group in range(1, max(idx) + 1):
                 decongroups[group] = []
             for peak in range(0, idx.shape[0]):
-                if (peak < len(unseplist)): #added this to get bruker data to work
+                if peak < len(unseplist):
                     decongroups[idx[peak]].append(unseplist[peak])
+
+            # Append groups to appropriate lists
             for group in decongroups:
                 if len(decongroups[group]) == 1:
                     singleslist.append(decongroups[group][0])
                 else:
                     clusterlist.append(decongroups[group])
                     tempdf = msdata_ind.loc[decongroups[group]].sort_values(by=['m/z'], ascending=False)
-                    #tempdf['neutral'] = tempdf['m/z'] - 1.007825 This code would start to figure out if something is an oligomer, gonna wait on this for a bit tho
-                    #tempdf['type'] = 'fragment'
-                    if len(tempdf.index.to_list()) > 0: #added this to get bruker data to work
+                    if len(tempdf.index.to_list()) > 0:
                         singleslist.append(tempdf.index.to_list()[0])
                         insourcelist += tempdf.index.to_list()[1:]
                         clusterdfs.append(tempdf)
-                    
-    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0,1,2], index_col = [0])
-    msdata = msdata.loc[singleslist]
-    msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header = True, index = True)
-    ionfilters['insource'] = ionfilter('', insourcelist)
-    
-    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = 0) #block adds average and median cv to iondict.csv
-    iondict['pass_insource'] = ~iondict.index.isin(ionfilters['insource'].ions)
-    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = True)
 
-    return(ionfilters)
+    # Write out data
+    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                         sep=',', header=[0, 1, 2], index_col=[0])
+    msdata = msdata.loc[singleslist]
+    msdata.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                  header=True, index=True)
+
+    # Update ion filters
+    ionfilters['insource'] = ionfilter('', insourcelist)
+
+    # Update ion dictionary
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep=',', header=[0], index_col=0)
+    iondict['pass_insource'] = ~iondict.index.isin(ionfilters['insource'].ions)
+    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
+    
+    return ionfilters
 
 # -----CV Filtering-----
 def listfilter(msdata, ionlist, include):
-    if include == True:
+    """
+    Filters msdata based on the ions in ionlist.
+
+    Parameters:
+        msdata (pandas.DataFrame): Dataframe to filter.
+        ionlist (list): List of ions to filter by.
+        include (bool): If True, keep ions in ionlist. If False, remove ions in ionlist.
+
+    Returns:
+        pandas.DataFrame: Filtered dataframe.
+    """
+    if include:
         msdata = msdata[msdata.iloc[:, 0].isin(ionlist)]
     else:
         msdata = msdata[~msdata.iloc[:, 0].isin(ionlist)]
-    return(msdata)
+    return msdata
 
-def groupfilter(group, msdata_blankfilterg, analysis_params): #filter ions over abundance threshold in list. Would be better to use a relative rather than absolute threshold
-    msdata_blankfilterg = msdata_blankfilterg[msdata_blankfilterg[group] > analysis_params.blankfilthresh] # filters ions based on group presence > 100 ions/abundance
+def groupfilter(group, msdata_blankfilterg, analysis_params):
+    """
+    Filters ions in msdata_blankfilterg based on presence in group.
+
+    Parameters:
+        group (str): Group to filter by.
+        msdata_blankfilterg (pandas.DataFrame): Dataframe to filter.
+        analysis_params (object): Analysis parameters.
+
+    Returns:
+        list: List of filtered ions.
+    """
+    # Filters ions based on group presence > 100 ions/abundance
+    msdata_blankfilterg = msdata_blankfilterg[msdata_blankfilterg[group] > analysis_params.blankfilthresh]
     msdata_blankfilterg = msdata_blankfilterg.reset_index()
-    groupfilterlist = msdata_blankfilterg.iloc[0:,0].tolist() #returns filtered df index as list
+    # Returns filtered dataframe index as list
+    groupfilterlist = msdata_blankfilterg.iloc[0:,0].tolist()
     return groupfilterlist
 
-def parsionlists(analysis_params): #parses lists of ions present in each group
+def parsionlists(analysis_params):
+    """
+    Parses lists of ions present in each group.
+
+    Parameters:
+        analysis_params (object): Analysis parameters.
+
+    Returns:
+        dict: Dictionary of group ion lists.
+    """
     msdata_blankfilterg = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_groupaverages.csv'), sep = ',', header = [0], index_col = [0, 1, 2, 3]).unstack()
     msdata_blankfilterg.columns = msdata_blankfilterg.columns.droplevel()
-    msdata_blankfilterg['max']=msdata_blankfilterg.max(numeric_only = True, axis = 1)
+    msdata_blankfilterg['max'] = msdata_blankfilterg.max(numeric_only=True, axis=1)
     for column in msdata_blankfilterg:
-        msdata_blankfilterg[column] = msdata_blankfilterg[column]/msdata_blankfilterg['max']
+        msdata_blankfilterg[column] = msdata_blankfilterg[column] / msdata_blankfilterg['max']
     msdata_blankfilterg = msdata_blankfilterg.drop(columns=['max'])
     biolgroups = msdata_blankfilterg.columns.tolist()
-    groupionlists={}
+    groupionlists = {}
     for group in biolgroups:
-        groupionlists[group] = groupfilter(group, msdata_blankfilterg, analysis_params)   
-    return(groupionlists)
+        groupionlists[group] = groupfilter(group, msdata_blankfilterg, analysis_params)
+    return groupionlists
 
-def cvfilter(analysis_params, ionfilterlist, threshold): #cv filter code NEED TO REMOVE MSDATAINPUT NOT NEEDED NOW
-
+def cvfilter(analysis_params, ionfilterlist, threshold):
+    """
+    Filters ions based on the coefficient of variation (CV).
+    """
     print('Running CV filter')
-    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2]) #imports data
-    msdata = msdata.stack([0,1,2])
-    msdata = (msdata.groupby(level = [0,1,2,3,4]).std() / msdata.groupby(level = [0,1,2,3,4]).mean())
-    msdatameancv = msdata.groupby(level = 0).mean().to_frame()
-    msdatamediancv = msdata.groupby(level = 0).median().to_frame()
     
-    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = 0) #block adds average and median cv to iondict.csv
-    iondict['average CV'] = msdatameancv.iloc[:,0]
-    iondict['median CV'] = msdatamediancv.iloc[:,0]
-    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = True)
+    # Import data and calculate CV
+    msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                         sep=',', header=[0, 1, 2], index_col=[0, 1, 2]).stack([0, 1, 2])
+    msdata_cv = (msdata.groupby(level=[0, 1, 2, 3, 4]).std() / msdata.groupby(level=[0, 1, 2, 3, 4]).mean())
+    msdatameancv = msdata_cv.groupby(level=0).mean().to_frame()
+    msdatamediancv = msdata_cv.groupby(level=0).median().to_frame()
+    
+    # Add average and median CV to iondict.csv
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep=',', header=[0], index_col=0)
+    iondict['average CV'] = msdatameancv.iloc[:, 0]
+    iondict['median CV'] = msdatamediancv.iloc[:, 0]
+    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
 
-    
-    #following format of getting ions to keep and then finding ions to reject is done to make sure ions with NaN values are excluded
-    msdata_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0, 1, 2], index_col = [0]) # added this to get peak list right before cv 
-                    #filtering now that blankfiltering and peak corr is baked in
-    ionlist = msdata_filtered.index.tolist() # list of all ions
-    iondict = iondict[iondict[analysis_params.cvparam] < threshold] 
-    cvkeeplist = iondict.index.tolist() # list of ions to keep
-    cvfilterlist = list(set(ionlist) - set(cvkeeplist)) # list of ions to reject
+    # Determine ions to keep and reject based on CV threshold
+    msdata_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
+                                  sep=',', header=[0, 1, 2], index_col=[0])
+    ionlist = msdata_filtered.index.tolist()
+    iondict = iondict[iondict[analysis_params.cvparam] < threshold]
+    cvkeeplist = iondict.index.tolist()
+    cvfilterlist = list(set(ionlist) - set(cvkeeplist))
     ionfilterlist['cv'] = ionfilter(analysis_params.cvthresh, cvfilterlist)
-    
-    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = 0)
+
+    # Update iondict with pass_cvfil column and save
+    iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep=',', header=[0], index_col=0)
     iondict['pass_cvfil'] = ~iondict.index.isin(ionfilterlist['cv'].ions)
-    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header = True, index = True) #saves formatted backup for later use
-    return(ionfilterlist)
+    iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
+    
+    return ionfilterlist
 
 # -----Deringing and relational filter algorithm-----
 def relationalfilter(analysis_params, ionfilterlist):#clean up index formatting, pull from ionmetadata
@@ -193,33 +250,45 @@ def relationalfilter(analysis_params, ionfilterlist):#clean up index formatting,
 
     return(ionfilterlist)
 
-def mergeions(analysis_params, ionfilters): #because of lack of hybrid indexing (.ix is deprecated) cant use ion name for rows and position index 2: for columns; 
-        #need to use col names which is not feasible, find row position based on name (might be best but not sure how to do), or find index tuples with rt and mz. 
-        #Implemented the last
-    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = [0])
-    mergedic, sourcelist, droplist = {}, [], []
-    for target in ionfilters['relfil'].merge:
-        targetindex = ((target, msdata_merged.loc[target, 'm/z'], msdata_merged.loc[target, 'Retention time (min)']))
-        sourcelist = []
-        for source in ionfilters['relfil'].merge[target].sources:
-            sourcelist.append((source, msdata_merged.loc[source, 'm/z'], msdata_merged.loc[source, 'Retention time (min)']))
-        droplist = droplist + sourcelist
-        mergedic[targetindex] = sourcelist
+
+def mergeions(analysis_params, ion_filters):
+    # Read in the data
+    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=[2], index_col=[0])
+
+    # Initialize variables
+    merge_dict = {}
+    source_list = []
+    drop_list = []
+
+    # Loop through each target ion and its associated sources
+    for target in ion_filters['relfil'].merge:
+        target_index = (target, msdata_merged.loc[target, 'm/z'], msdata_merged.loc[target, 'Retention time (min)'])
+        source_list = []
+        for source in ion_filters['relfil'].merge[target].sources:
+            source_list.append((source, msdata_merged.loc[source, 'm/z'], msdata_merged.loc[source, 'Retention time (min)']))
+        drop_list += source_list
+        merge_dict[target_index] = source_list
         
-    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])
-    for target in mergedic:
-        for source in mergedic[target]:
-            msdata_merged.loc[target] = msdata_merged.loc[target] + msdata_merged.loc[source]
-            msdata_merged.loc[source] #not sure if this is needed
-    msdata_merged = msdata_merged.drop(droplist, axis=0)
-    msdata_merged.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_merged.csv'), header = True, index = True)
-    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_merged.csv'), sep = ',', header = None, index_col = None)
-    msdata_merged.iloc[2,0:3] = ['Compound', 'm/z', 'Retention time (min)']
-    msdata_merged.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header = False, index = False)
+    # Merge the ions in the data frame
+    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+    for target in merge_dict:
+        for source in merge_dict[target]:
+            msdata_merged.loc[target] += msdata_merged.loc[source]
 
+    # Drop the source ions
+    msdata_merged = msdata_merged.drop(drop_list, axis=0)
 
-def applyfilters(analysis_params, ionfilters):
-    msdataout_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = None, index_col = None) # reopen original data
-    for elem in ionfilters:
-        msdataout_filtered = listfilter(msdataout_filtered, ionfilters[elem].ions, False)
-    msdataout_filtered.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_filtered.csv'), index = False, header = False) # saves output
+    # Save the merged data frame
+    msdata_merged.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_merged.csv'), header=True, index=True)
+
+    # Format the merged data frame and save it
+    msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_merged.csv'), sep=',', header=None, index_col=None)
+    msdata_merged.iloc[2, 0:3] = ['Compound', 'm/z', 'Retention time (min)']
+    msdata_merged.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header=False, index=False)
+
+def applyfilters(analysis_params, ion_filters):
+    ms_data_out_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=None, index_col=None)  # reopen original data
+    for elem in ion_filters:
+        ms_data_out_filtered = listfilter(ms_data_out_filtered, ion_filters[elem].ions, False)
+    ms_data_out_filtered.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_filtered.csv'), index=False, header=False)  # saves output
+    

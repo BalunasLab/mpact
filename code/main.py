@@ -3,6 +3,7 @@ MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
 
+
 import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
@@ -99,33 +100,51 @@ Check if low_memory=False increases ram usage for average grps?
 '''
 
 
-class query: #defines conditions (group presence/absence) to plot feature in a colour
+class query:
+    """
+    Defines conditions (group presence/absence) to plot feature in a colour
+    """
     def __init__(self):
         self.name = ''
-        self.src = '' #or groups, feature can be in
-        self.incl = '' #and groups, feature must be in
-        self.excl = '' #not groups, feature must not be in
+        self.src = ''  # or groups, feature can be in
+        self.incl = ''  # and groups, feature must be in
+        self.excl = ''  # not groups, feature must not be in
         self.colour = '#000000'
 
+
 fullruntime = 0
-def start_functime(): #used to calculate runtime
-   global initfunctime
-   initfunctime = time.time()
 
-def stop_functime(text): #prints runtime for step and increments global runtime
-   final = time.time()
-   interval = final - initfunctime
-   global fullruntime
-   fullruntime = fullruntime + interval
-   print(text)
-   print(interval)
-   print('')
-   start_functime()
 
-def reset_runtime(): #resets for new analysis
+def start_functime():
+    """
+    Used to calculate runtime
+    """
+    global initfunctime
+    initfunctime = time.time()
+
+
+def stop_functime(text):
+    """
+    Prints runtime for step and increments global runtime
+    """
+    final = time.time()
+    interval = final - initfunctime
+    global fullruntime
+    fullruntime = fullruntime + interval
+    print(text)
+    print(interval)
+    print('')
+    start_functime()
+
+
+def reset_runtime():
+    """
+    Resets for new analysis
+    """
     global fullruntime
     fullruntime = 0
         
+    
 #UI WINDOWS#
 class ftrdialog(QMainWindow): #dialog window for feature level data (spec, abund, hits)
     def __init__(self):
@@ -228,35 +247,42 @@ class MainWindow(QMainWindow):
 
     #---Methods---
     def error(self, message):
-            self.ui.label_status.setText(message)
-            self.ui.label_status.setStyleSheet('color: rgb(150,0,0);')
-            
-    def getgroups(self): #get biological groups on input of all input files, fills comboboxes with these
-        extractmetadata = pd.read_csv(self.extractmetadatafilename , sep = ',', header = [0], index_col = None)
-        samplelist = pd.read_csv(self.samplelistfilename, sep = ',', header = [0], index_col = None)
+        self.ui.label_status.setText(message)
+        self.ui.label_status.setStyleSheet('color: rgb(150,0,0);')
+    
+    def getgroups(self):
+        """
+        Get biological groups on input of all input files, fills comboboxes with these.
+        """
+        extractmetadata = pd.read_csv(self.extractmetadatafilename, sep=',', header=[0], index_col=None)
+        samplelist = pd.read_csv(self.samplelistfilename, sep=',', header=[0], index_col=None)
+    
         try:
-            combinedmetadata = extractmetadata.set_index('Sample_Code').join(samplelist.set_index('Sample_Code')).reset_index().set_index('Injection') #clean up or split
+            combinedmetadata = extractmetadata.set_index('Sample_Code').join(samplelist.set_index('Sample_Code')) \
+                                                    .reset_index().set_index('Injection')
         except Exception:
             self.error('Data read failure: Check input files')
-            pass
-            return()
-        msdata = pd.read_csv(self.filename, sep = ',', header = None, index_col = [0, 1, 2]) #peak table file
+            return
+    
+        msdata = pd.read_csv(self.filename, sep=',', header=None, index_col=[0, 1, 2])
         groups = []
-        for elem in msdata.iloc[2]: # itterates over header add groups to list
+    
+        for elem in msdata.iloc[2]:
             biolgroup = combinedmetadata.loc[elem, 'Biological_Group']
             if biolgroup not in groups:
                 groups.append(combinedmetadata.loc[elem, 'Biological_Group'])
+    
         self.groups = groups
-        
-        #set experimental and control grp defaults in ui
+    
+        # Set experimental and control grp defaults in ui
         self.ui.combo_blankfil_name.clear()
         self.ui.combo_blankfil_name.addItems(self.groups)
         self.ui.combo_expgrp.clear()
         self.ui.combo_expgrp.addItems(self.groups)
         self.ui.combo_ctrgrp.clear()
         self.ui.combo_ctrgrp.addItems(self.groups)
-        
-        #set default blank filter group in ui, defaults to any value including substr blank
+            
+        # Set experimental and control group defaults in ui
         pos = 0
         expset = False
         for group in self.groups:
@@ -269,131 +295,153 @@ class MainWindow(QMainWindow):
                     self.ui.combo_expgrp.setCurrentIndex(pos)
                     expset = True
             pos += 1
+    
         
-    def fulldbsearch(self): #run full compound database search
-                            #probably best to update this with real database approach
-                            #so that search doesn't need to be rerun but this might be RAM intensive
+    def fulldbsearch(self):
+        # Run full compound database search. Probably best to update this with real database approach so that search doesn't need to be rerun but this might be RAM intensive
         self.hitdb = {}
-        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
+        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
         iondict['hits'] = ''
-        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [2], index_col = None).iloc[:,:3]
-        
-        for mindex, mrow in msdata.iterrows(): #itterates over iondict, filters DB matches within window.
-                                    # Repeats for adducts, uses length of concat DF for feature hits
-                                    # CHECKTO SEE IF I NEED MINDEXTOO MIGHT SLOW DOWN
+        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[2], index_col=None).iloc[:, :3]
+    
+        for _, mrow in msdata.iterrows():
+            # Iterates over iondict, filters DB matches within window.
+            # Repeats for adducts, uses length of concat DF for feature hits
             mass = mrow['m/z']
             ppmwindow = self.analysis_paramsgui.ppmthresh
-            hits_h = self.atlas[abs(1000000*(self.atlas['compound_m_plus_h'] - mass)/self.atlas['compound_m_plus_h']) < ppmwindow]
-            hits_h['ppm'] = abs(1000000*(hits_h['compound_m_plus_h'] - mass)/hits_h['compound_m_plus_h'])
-            hits_na = self.atlas[abs(1000000*(self.atlas['compound_m_plus_na'] - mass)/self.atlas['compound_m_plus_na']) < ppmwindow]
-            hits_na['ppm'] = abs(1000000*(hits_na['compound_m_plus_na'] - mass)/hits_na['compound_m_plus_na'])
+            hits_h = self.atlas[abs(1000000 * (self.atlas['compound_m_plus_h'] - mass) / self.atlas['compound_m_plus_h']) < ppmwindow]
+            hits_h['ppm'] = abs(1000000 * (hits_h['compound_m_plus_h'] - mass) / hits_h['compound_m_plus_h'])
+            hits_na = self.atlas[abs(1000000 * (self.atlas['compound_m_plus_na'] - mass) / self.atlas['compound_m_plus_na']) < ppmwindow]
+            hits_na['ppm'] = abs(1000000 * (hits_na['compound_m_plus_na'] - mass) / hits_na['compound_m_plus_na'])
             hits = pd.concat([hits_h, hits_na])
             hits = hits.sort_values(by=['ppm'])
             self.hitdb[mrow['Compound']] = hits
-            iondict.loc[mrow['Compound'],'hits'] = hits.shape[0]
-            
-        iondict.to_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', header = True, index = True)
+            iondict.loc[mrow['Compound'], 'hits'] = hits.shape[0]
+    
+        iondict.to_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', header=True, index=True)
+
         
-    def fillfttree(self): # fill feature tree with database hits
-        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
+    def fillfttree(self):
+        # Fill feature tree with database hits
+        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=None)
         iondict = iondict[iondict['hits'] >= 0]
         self.ui.treeWidget.setSortingEnabled(True)
-        
-        x=0
+    
         itemdict = {}
         self.ui.treeWidget.clear()
-        for index, row in iondict.iterrows():
-            itemdict[x] = QtWidgets.QTreeWidgetItem( [row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(row['groups']), str(round(row['fc'],2)), str(int(row['hits']))])
-            self.ui.treeWidget.addTopLevelItem(itemdict[x])
-            x = x+1
-
-        def onItemClicked3(): #rename to onItemClicked
+        for i, row in iondict.iterrows():
+            item = QtWidgets.QTreeWidgetItem([row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(row['groups']), str(round(row['fc'], 2)), str(int(row['hits']))])
+            itemdict[i] = item
+            self.ui.treeWidget.addTopLevelItem(item)
+    
+        def onItemClicked():
+            # Rename to onItemClicked
             item = self.ui.treeWidget.selectedItems()[0]
             pickedfeature = item.text(0)
-            self.highlight_feature(pickedfeature) #highlights the selected feature
+            self.highlight_feature(pickedfeature)  # Highlights the selected feature
+    
+        self.ui.treeWidget.itemSelectionChanged.connect(onItemClicked)
+                
 
-        self.ui.treeWidget.itemSelectionChanged.connect(onItemClicked3)
-                                                     
+                                     
     def runsearch(self, mass): # run search for a mass, refactor if I can save a database of hits
-                #possibly make a third common method used in both dbsearch and this method
-            ppmwindow = self.analysis_paramsgui.ppmthresh
-            hits_h = self.atlas[abs(1000000*(self.atlas['compound_m_plus_h'] - mass)/self.atlas['compound_m_plus_h']) < ppmwindow]
-            hits_h['ppm'] = abs(1000000*(hits_h['compound_m_plus_h'] - mass)/hits_h['compound_m_plus_h'])
-            hits_na = self.atlas[abs(1000000*(self.atlas['compound_m_plus_na'] - mass)/self.atlas['compound_m_plus_na']) < ppmwindow]
-            hits_na['ppm'] = abs(1000000*(hits_na['compound_m_plus_na'] - mass)/hits_na['compound_m_plus_na'])
-            hits = pd.concat([hits_h, hits_na])
-            hits = hits.sort_values(by=['ppm'])
-            
-            x=0 #rename this variable
-            itemdict = {}
-            smilesdict = {}
-            self.ftrdialog.ui.treeWidget.clear()
-            for index, row in hits.iterrows():
-                itemdict[x] = QtWidgets.QTreeWidgetItem( [row['compound_names'], row['compound_molecular_formula'], str(row['compound_accurate_mass']), str(row['ppm']), (str(row['genus'] + ' ' + row['origin_species'])), row['compound_smiles']])
-                self.ftrdialog.ui.treeWidget.addTopLevelItem(itemdict[x])
-                x = x + 1
-            
-            def onItemClicked(): #show structure of selected match
-                if len(self.ftrdialog.ui.treeWidget.selectedItems()) > 0:
-                    item = self.ftrdialog.ui.treeWidget.selectedItems()[0]
-                    m = indigo.loadMolecule(item.text(5))
-                    indigo.setOption('render-image-size', '400,400')
-                    renderer.renderToFile(m, 'selected.png')
-                    pixmap = QPixmap('selected.png')
-                    pixmap2 = pixmap.scaled(400, 400, QtCore.Qt.KeepAspectRatio)
-                    self.ftrdialog.ui.label.setPixmap(pixmap2)
-            
-            self.ftrdialog.ui.treeWidget.itemSelectionChanged.connect(onItemClicked)
-            if len(hits.index) == 0:
-                pixmap = QPixmap('blank.png')
+        #possibly make a third common method used in both dbsearch and this method
+        ppmwindow = self.analysis_paramsgui.ppmthresh
+        hits_h = self.atlas[abs(1000000*(self.atlas['compound_m_plus_h'] - mass)/self.atlas['compound_m_plus_h']) < ppmwindow]
+        hits_h['ppm'] = abs(1000000*(hits_h['compound_m_plus_h'] - mass)/hits_h['compound_m_plus_h'])
+        hits_na = self.atlas[abs(1000000*(self.atlas['compound_m_plus_na'] - mass)/self.atlas['compound_m_plus_na']) < ppmwindow]
+        hits_na['ppm'] = abs(1000000*(hits_na['compound_m_plus_na'] - mass)/hits_na['compound_m_plus_na'])
+        hits = pd.concat([hits_h, hits_na])
+        hits = hits.sort_values(by=['ppm'])
+        
+        x=0 #rename this variable
+        itemdict = {}
+        smilesdict = {}
+        self.ftrdialog.ui.treeWidget.clear()
+        for index, row in hits.iterrows():
+            itemdict[x] = QtWidgets.QTreeWidgetItem( [row['compound_names'], row['compound_molecular_formula'], str(row['compound_accurate_mass']), str(row['ppm']), (str(row['genus'] + ' ' + row['origin_species'])), row['compound_smiles']])
+            self.ftrdialog.ui.treeWidget.addTopLevelItem(itemdict[x])
+            x = x + 1
+        
+        def onItemClicked(): #show structure of selected match
+            if len(self.ftrdialog.ui.treeWidget.selectedItems()) > 0:
+                item = self.ftrdialog.ui.treeWidget.selectedItems()[0]
+                m = indigo.loadMolecule(item.text(5))
+                indigo.setOption('render-image-size', '400,400')
+                renderer.renderToFile(m, 'selected.png')
+                pixmap = QPixmap('selected.png')
                 pixmap2 = pixmap.scaled(400, 400, QtCore.Qt.KeepAspectRatio)
                 self.ftrdialog.ui.label.setPixmap(pixmap2)
-            else:
-                self.ftrdialog.ui.treeWidget.setCurrentItem(itemdict[0])
+        
+        self.ftrdialog.ui.treeWidget.itemSelectionChanged.connect(onItemClicked)
+        if len(hits.index) == 0:
+            pixmap = QPixmap('blank.png')
+            pixmap2 = pixmap.scaled(400, 400, QtCore.Qt.KeepAspectRatio)
+            self.ftrdialog.ui.label.setPixmap(pixmap2)
+        else:
+            self.ftrdialog.ui.treeWidget.setCurrentItem(itemdict[0])
                 
-    def highlight_feature(self, newfeature): #highlights features based on input feature name
-            # this uses a seperate axis feature set set on each plot where the selective feature is plotted in yellow
-            # maybe change labels in here rather than in individual pick calls?
-        if newfeature == self.pickedfeature and self.highlightcol != (0,0,0,0): #used to deselect highlighted feature if clicked twice
-            self.highlightcol = (0,0,0,0)
+    def highlight_feature(self, newfeature):
+        # Deselect the highlighted feature if clicked twice
+        if newfeature == self.pickedfeature and self.highlightcol != (0, 0, 0, 0):
+            self.highlightcol = (0, 0, 0, 0)
         else:
             self.highlightcol = 'yellow'
+            
+        # Highlight the selected feature in all plots
         for plot in self.highlight:
             self.highlight[plot].set_color(self.highlightcol)
+            
+        # Set the selected feature as the picked feature
         self.pickedfeature = newfeature
-        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
         
+        # Read iondict file to get ion data
+        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv',
+                              sep=',', header=[0], index_col=[0])
+        
+        # Update volcano plot with the selected feature
         if self.analysis_paramsgui.Volcanoplt:
-            self.highlight['volcano'].set_data(iondict.loc[self.pickedfeature,'logfc'], iondict.loc[self.pickedfeature, '-logq'])
+            self.highlight['volcano'].set_data(iondict.loc[self.pickedfeature, 'logfc'],
+                                                iondict.loc[self.pickedfeature, '-logq'])
             self.canvas['volcano'].draw_idle()
         
+        # Update MZRT plot with the selected feature
         if self.analysis_paramsgui.MZRTplt:
-            self.highlight['mzrt'].set_data(iondict.loc[self.pickedfeature,'Retention time (min)'], iondict.loc[self.pickedfeature, 'm/z'])
+            self.highlight['mzrt'].set_data(iondict.loc[self.pickedfeature, 'Retention time (min)'],
+                                            iondict.loc[self.pickedfeature, 'm/z'])
             self.canvas['mzrt'].draw_idle()
         
+        # Update KMD plot with the selected feature
         if self.analysis_paramsgui.KMD:
-            self.highlight['kmd'].set_data(iondict.loc[self.pickedfeature,'m/z'], iondict.loc[self.pickedfeature, 'kmd'])
+            self.highlight['kmd'].set_data(iondict.loc[self.pickedfeature, 'm/z'],
+                                           iondict.loc[self.pickedfeature, 'kmd'])
             self.canvas['kmd'].draw_idle()
         
-        self.highlight['featureplt'].set_data(iondict.loc[self.pickedfeature,'Retention time (min)'], iondict.loc[self.pickedfeature, 'm/z'])
+        # Update feature plot with the selected feature
+        self.highlight['featureplt'].set_data(iondict.loc[self.pickedfeature, 'Retention time (min)'],
+                                               iondict.loc[self.pickedfeature, 'm/z'])
         self.canvas['featureplt'].draw_idle()
         
-        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [2], index_col = [0])
-        self.heatind = self.cmind.index(msdata.index.to_list().index(self.pickedfeature)) #heatmap index is different so it is mapped this way
-        xlim = int(self.canvas['heatmap'].figure.axes[2].get_xlim()[1]) # sets limits of heatmap highlight based on view
-        self.highlight['heatmap'].set_data([0,xlim,xlim,0,0],[self.heatind,self.heatind,self.heatind+1,self.heatind+1,self.heatind])
+        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'),
+                              sep=',', header=[2], index_col=[0])
+        
+        # Set heatmap highlight based on view
+        self.heatind = self.cmind.index(msdata.index.to_list().index(self.pickedfeature))
+        xlim = int(self.canvas['heatmap'].figure.axes[2].get_xlim()[1])
+        self.highlight['heatmap'].set_data([0, xlim, xlim, 0, 0], [self.heatind, self.heatind, self.heatind+1, self.heatind+1, self.heatind])
         self.canvas['heatmap'].draw_idle()
-            
-        self.runsearch(iondict.loc[self.pickedfeature,'m/z'])#runs search when feature is selected
-                #probably need to make this conditional, also need to make these autorun when the appropriate tab clicked
+        
+        # Run search when feature is selected
+        if self.ftrdialog.ui.stackedWidget.currentIndex() == 0 and not self.ftrdialog.isHidden():
+            self.runsearch(iondict.loc[self.pickedfeature, 'm/z'])
+        
+        # Reset spec if fragfilename exists and update abundplt
         if self.fragfilename != '':
             self.spec.reset(self, self.fragdb.ions[self.pickedfeature].pattern)
-        if self.ftrdialog.ui.stackedWidget.currentIndex() == 2 and self.ftrdialog.isHidden() == False: #false rpobably isnt needed here, to do that do I ust do ~___.ishidden()? have to check
+        if self.ftrdialog.ui.stackedWidget.currentIndex() == 2 and not self.ftrdialog.isHidden():
             self.abundplt.reset()
 
-        
-    #following is to move heatmap selection up or down on w/s key press
-    #should figure out how to use arrow keys
+     # Move heatmap selection up or down with W/S key press
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_W:
             self.mv_heatmap(-1)
@@ -401,47 +449,59 @@ class MainWindow(QMainWindow):
             self.mv_heatmap(1)
     
     def mv_heatmap(self, shift):
-        if self.ui.stackedWidget_plot.currentIndex() == 8 and self.ui.stackedWidget.currentIndex() == 3:
-            iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
-            msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [2], index_col = [0]).iloc[:,2:]
-            name = msdata.index.tolist()[self.cmind[self.heatind+shift]]    
-        
-            self.ui.lbl_featurename.setText('Compound: ' + name)
-            self.ui.lbl_featurert.setText('Retention time: ' + str(iondict.loc[name,'Retention time (min)']))
-            self.ui.lbl_featuremz.setText('m/z: ' + str(iondict.loc[name,'m/z']))
-            self.highlight_feature(name)
- 
+        if self.ui.stackedWidget_plot.currentIndex() != 8 or self.ui.stackedWidget.currentIndex() != 3:
+            return
     
-    def read_save(self,savefile): #may move to uifunctions
-        read_pi = open(savefile, 'rb') 
-        self.savedata = pickle.load(read_pi)
-        read_pi.close()
+        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
+        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[2], index_col=[0]).iloc[:, 2:]
+        index = self.cmind[self.heatind + shift]
+        name = msdata.index.tolist()[index]
     
+        self.ui.lbl_featurename.setText('Compound: ' + name)
+        self.ui.lbl_featurert.setText('Retention time: ' + str(iondict.loc[name, 'Retention time (min)']))
+        self.ui.lbl_featuremz.setText('m/z: ' + str(iondict.loc[name, 'm/z']))
+        self.highlight_feature(name)
+     
+    
+    def read_save(self, savefile):
+        # Open and read the pickle file
+        with open(savefile, 'rb') as read_pi:
+            self.savedata = pickle.load(read_pi)
+    
+        # Assign the analysis parameters
         self.analysis_paramsgui = self.savedata['parameters']
+            
+        # Set output dir to save file directory, make rawdata folder
+        self.analysis_paramsgui.outputdir = Path(savefile).parent
+        Path(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata').mkdir(parents=True, exist_ok=True)
+            
+        # Write raw files from save file
+        self.savedata['peaktable'].to_csv(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.filename.name, header=False, index=False)
+        self.savedata['samplelist'].to_csv(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.samplelistfilename.name, header=False, index=False)
+        self.savedata['extractmetadata'].to_csv(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.extractmetadatafilename.name, header=False, index=False)
         
-        #set ouput dir to save file directory, make rawdata folder
-        self.analysis_paramsgui.outputdir = Path(self.savefile).parent
-        Path(self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata').mkdir(parents=True, exist_ok=True)
-        
-        #write raw files from save file
-        self.savedata['peaktable'].to_csv(self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.filename.name, header = False, index = False)
-        self.savedata['samplelist'].to_csv(self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.samplelistfilename.name, header = False, index = False)
-        self.savedata['extractmetadata'].to_csv(self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.extractmetadatafilename.name, header = False, index = False)
-        if self.analysis_paramsgui.fragfilename != '':
-            fragmsp = open(self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.fragfilename.name, 'w')     
+        # Write frag file if it exists
+        if self.analysis_paramsgui.fragfilename:
+            fragmsp = open(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.fragfilename.name, 'w')     
             fragmsp.write(self.savedata['fragdb'])
             fragmsp.close()
-        
+            
+        # Assign file names and output directory
         self.outputdir = self.analysis_paramsgui.outputdir
-        self.samplelistfilename = self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.samplelistfilename.name
-        self.extractmetadatafilename = self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.extractmetadatafilename.name
-        if self.analysis_paramsgui.fragfilename != '':
-            self.fragfilename = self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ Path(self.analysis_paramsgui.fragfilename).name #for some reason fragfilename comes in as a str not path, thus the path conversion
-        self.filename = self.analysis_paramsgui.outputdir/self.analysis_paramsgui.filename.stem/'rawdata'/ self.analysis_paramsgui.filename.name # may be a good idea to write all of these directly to analysis params and not seperate object?
-
+        self.samplelistfilename = self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.samplelistfilename.name
+        self.extractmetadatafilename = self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.extractmetadatafilename.name
+        
+        # Assign frag file name if it exists
+        if self.analysis_paramsgui.fragfilename:
+            self.fragfilename = self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / Path(self.analysis_paramsgui.fragfilename).name
+        
+        self.filename = self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'rawdata' / self.analysis_paramsgui.filename.name
+    
+        # Get groups and update querys
         self.getgroups()
-        self.querys = self.analysis_paramsgui.queries # SEE COMMENT ON PICKLE SAVE, REFACTOR FOR MVC IN MAIN
+        self.querys = self.analysis_paramsgui.queries
         UIFunctions.updatesets(self)
+        
         
     def write_save(self): #may move to uifunctions
         self.analysis_paramsgui.queries = self.querys # WRITES QUERY DB FOR GROUPSETS IN ANALYSISPARAMETERS, WILL NEED TO CHANGE WHEN MVC IMPLEMENTED
@@ -465,15 +525,17 @@ class MainWindow(QMainWindow):
         self.enumerate_inputs()
         print('')
         stop_functime('inputs obtained')
-        #insert working signal here, will likely need multithreading
+        
+        # Insert working signal here, will likely need multithreading
         run_MSFaST(self)
         print('')
         stop_functime('calculations complete')
-        gen_treemap(self) #move back to end
+        
+        gen_treemap(self)  # move back to end
         stop_functime('treemap complete')
         
-        #used for point opacity based on abundance colouring
-        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = None)
+        # Used for point opacity based on abundance colouring
+        iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=None)
         self.analysis_paramsgui.maxval = iondict['logmax'].max()
         
         if self.analysisrun:
@@ -481,69 +543,85 @@ class MainWindow(QMainWindow):
         else:
             self.ftplt = show_featureplt(self, 'featureplt', self.ui.frame_featureplt, self.analysis_paramsgui.outputdir / 'iondict.csv', '', '')
             stop_functime('ftplt complete')
+        
             self.dend = plot_dendrogram(self, 'dend', self.ui.frame_dend, self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), '', '')
             stop_functime('dendrogram complete')
+        
             if self.analysis_paramsgui.PCA:
                 self.pca = plot_PCA(self, 'pca', self.ui.frame_pca, self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), '', '')
                 stop_functime('nmds complete')
+        
             if self.analysis_paramsgui.FC3Dplt:
                 self.fc3d = plot_fc3d(self, 'fc3d', self.ui.frame_fc3d,  self.analysis_paramsgui.outputdir / 'iondict.csv', self.filtereddfs, self.groupsets) 
                 stop_functime('fc3d complete')
+        
             if self.analysis_paramsgui.KMD:
                 self.kmd = kendrick(self, 'kmd', self.ui.frame_kmd, self.analysis_paramsgui.outputdir / 'iondict.csv', self.filtereddfs, self.groupsets)
                 stop_functime('kmd complete')
+        
             if self.analysis_paramsgui.MZRTplt:
                 self.mzrt = plot_mzrt(self, 'mzrt', self.ui.frame_mzrt, self.analysis_paramsgui.outputdir / 'iondict.csv', self.filtereddfs, self.groupsets)
                 stop_functime('mzrt complete')
+        
             if self.analysis_paramsgui.Volcanoplt:
                 self.volcano = plot_volcano(self, 'volcano', self.ui.frame_volcano, self.analysis_paramsgui.outputdir / 'iondict.csv', self.filtereddfs, self.groupsets)
                 stop_functime('volcano complete')
+        
             self.heatmap = plot_heatmap(self,  'heatmap', self.ui.frame_heatmap, self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'))
             stop_functime('heatmap complete')
+        
             self.abundplt = plot_abund(self, 'abund')
+        
             if self.fragfilename != '':
                 self.spec = show_spectrum(self, 'spec')
+        
             if self.analysis_paramsgui.CVfil:
                 self.prevcv = prev_cv(self, 'cvplt', self.ui.frame_cvplt, 'none', 'none', 'none')
                 stop_functime('cvplt complete')
+        
             self.samplecorr = plot_samplecorr(self, 'samplecorr', self.ui.frame_samplecorr, self.analysis_paramsgui.outputdir / 'iondict.csv', self.filtereddfs, self.groupsets)
             stop_functime('samplecorr complete')
-            
-        self.analysisrun = True
-        text=open(self.analysis_paramsgui.outputdir / 'analysisinfo.txt').read() #writes output text to report tab
-        self.ui.textBrowser_info.setPlainText(text)
         
-        #writes filtering statistics in data review summary
-        msdata_unformatted = pd.read_csv(self.analysis_paramsgui.filename, sep = ',', header = [0, 1, 2], index_col = [0, 1, 2]) # MAY NEED TO CHANGE TO _FORMATTED.CSV
-        msdata = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_formatted.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])#need to change this to get original file...
-        msdata_filtered = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [0, 1, 2], index_col = [0, 1, 2])#need to change this to get original file...
+        self.analysisrun = True
+        
+        text = open(self.analysis_paramsgui.outputdir / 'analysisinfo.txt').read() #writes output text to report tab
+        self.ui.textBrowser_info.setPlainText(text)
+    
+    
+
+        # Writes filtering statistics in data review summary
+        msdata_unformatted = pd.read_csv(self.analysis_paramsgui.filename, sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+        msdata_formatted = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_formatted.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+        msdata_filtered = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+        
         text = ''
         if self.analysis_paramsgui.relfil:
-            text = text + 'Features failing peak correction filtering: ' + str(len(self.ionfilters['relfil'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['relfil'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
+            text += 'Features failing peak correction filtering: ' + str(len(self.ionfilters['relfil'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * len(self.ionfilters['relfil'].ions) / len(msdata_unformatted.index), 2)) + '%\n'
         if self.analysis_paramsgui.blnkfltr:
-            text = text + 'Features failing blank filtering: ' + str(len(self.groupionlists[self.analysis_paramsgui.blnkgrp])) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.groupionlists[self.analysis_paramsgui.blnkgrp])/len(msdata_unformatted.index), 2)) +'%\n'
+            text += 'Features failing blank filtering: ' + str(len(self.groupionlists[self.analysis_paramsgui.blnkgrp])) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * len(self.groupionlists[self.analysis_paramsgui.blnkgrp]) / len(msdata_unformatted.index), 2)) + '%\n'
         if self.analysis_paramsgui.decon:
-            text = text + 'Features in-source ion filtering: ' + str(len(self.ionfilters['insource'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['insource'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
+            text += 'Features in-source ion filtering: ' + str(len(self.ionfilters['insource'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * len(self.ionfilters['insource'].ions) / len(msdata_unformatted.index), 2)) + '%\n'
         if self.analysis_paramsgui.CVfil:
-            text = text + 'Features failing CV filtering: ' + str(len(self.ionfilters['cv'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(self.ionfilters['cv'].ions)/len(msdata_unformatted.index), 2)) +'%\n'
-        text = text + 'Features failing any filters: ' + str(len(msdata_unformatted.index) - len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*(len(msdata_unformatted.index) - len(msdata_filtered.index))/len(msdata_unformatted.index), 2)) +'%\n'
-        text = text + 'Features passing all filters: ' + str(len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100*len(msdata_filtered.index)/len(msdata_unformatted.index), 2)) +'%\n'
+            text += 'Features failing CV filtering: ' + str(len(self.ionfilters['cv'].ions)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * len(self.ionfilters['cv'].ions) / len(msdata_unformatted.index), 2)) + '%\n'
+        text += 'Features failing any filters: ' + str(len(msdata_unformatted.index) - len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * (len(msdata_unformatted.index) - len(msdata_filtered.index)) / len(msdata_unformatted.index), 2)) + '%\n'
+        text += 'Features passing all filters: ' + str(len(msdata_filtered.index)) + '/' + str(len(msdata_unformatted.index)) + ' ' + str(round(100 * len(msdata_filtered.index) / len(msdata_unformatted.index), 2)) + '%\n'
+        
         self.ui.textBrowser_mp_prev.setPlainText(text)
         
-        if self.fragfilename != '': # Imports msp fragment database
+        # Imports msp fragment database
+        if self.fragfilename != '':
             self.fragdb = getfragdb.importfrag(self.analysis_paramsgui.fragfilename)
-            stop_functime('fragdb imported')
             self.ftrdialog.ui.btn_spectrum.show()
         else:
             self.fragdb = 'None'
             self.ftrdialog.ui.btn_spectrum.hide()
         
-        if self.ui.stackedWidget.currentIndex() == 5: # runs DB search only if tab is active
+        # Runs DB search only if tab is active
+        if self.ui.stackedWidget.currentIndex() == 5:
             self.fulldbsearch()
-            stop_functime('dbsearch complete')
             self.fillfttree()
-            stop_functime('featurelist filled')
             self.dbsearchdone = True
+        
         gen_upsetplt(self)
         stop_functime('upsetplt complete')
         self.ui.label_status.setText('Analysis Complete')
@@ -557,42 +635,43 @@ class MainWindow(QMainWindow):
         
         self.write_save()
         
-        
     def enumerate_inputs(self):
         self.analysis_paramsgui = analysis_parameters()
-        
-        self.selset = self.ui.listWidget_pltgrps.currentRow() #final groupset update
+        self.selset = self.ui.listWidget_pltgrps.currentRow()
         UIFunctions.writegroups(self)
         
-        self.analysis_paramsgui.graphfilters =''
+        self.analysis_paramsgui.graphfilters = ''
         if self.ui.checkBox_cv.isChecked():
-            self.analysis_paramsgui.graphfilters = self.analysis_paramsgui.graphfilters + 'cv '
+            self.analysis_paramsgui.graphfilters += 'cv '
         if self.ui.checkBox_mp.isChecked():
-            self.analysis_paramsgui.graphfilters = self.analysis_paramsgui.graphfilters + 'rel '
+            self.analysis_paramsgui.graphfilters += 'rel '
         if self.ui.checkBox_decon.isChecked():
-            self.analysis_paramsgui.graphfilters = self.analysis_paramsgui.graphfilters + 'insource' #cut this or do it some other way
+            self.analysis_paramsgui.graphfilters += 'insource'
             self.analysis_paramsgui.deconthresh = float(self.ui.lineEdit_insourcethresh.text())
+        
         tempquerydic = {}
-        for pos in range(0, len(self.querys)): #should probably be refactored
-            tempquerydic[pos] = query()
-            tempquerydic[pos].colour = self.querys[pos].colour
-            tempquerydic[pos].name = self.querys[pos].name#.text() CHANGED WHEN QUERY .NAME SWITCHED FROM WIDGET OBJECT TO TEXT FOR PICKLEABILITY
-            tempquerydic[pos].excl = ' '.join(self.querys[pos].excl)
-            tempquerydic[pos].incl = ' '.join(self.querys[pos].incl)
-            tempquerydic[pos].src = ' '.join(self.querys[pos].src)
+        for pos in range(len(self.querys)):
+            tempquery = query()
+            tempquery.colour = str(self.querys[pos].colour)
+            tempquery.name = self.querys[pos].name
+            tempquery.excl = ' '.join(self.querys[pos].excl)
+            tempquery.incl = ' '.join(self.querys[pos].incl)
+            tempquery.src = ' '.join(self.querys[pos].src)
+            tempquerydic[pos] = tempquery
             
-            tempquerydic[pos].colour = str(tempquerydic[pos].colour)
         querydict = {}
         for elem in tempquerydic:
-            tempquerydic[elem].excl = tempquerydic[elem].excl + ' ' + self.analysis_paramsgui.graphfilters
+            tempquerydic[elem].excl += ' ' + self.analysis_paramsgui.graphfilters
             queryname = tempquerydic[elem].src + ' +' + tempquerydic[elem].incl + ' -' + tempquerydic[elem].excl + ' c=' + tempquerydic[elem].colour + ' n=' + tempquerydic[elem].name
             tempquerydic[elem].src = tempquerydic[elem].src.split()
             tempquerydic[elem].incl = tempquerydic[elem].incl.split()
             tempquerydic[elem].excl = tempquerydic[elem].excl.split()
             querydict[queryname] = tempquerydic[elem]
+        
         self.analysis_paramsgui.querydict = querydict
         self.analysis_paramsgui.querylist = list(querydict.keys())
-
+        
+        # Set analysis parameters
         self.analysis_paramsgui.filename = self.filename
         self.analysis_paramsgui.samplelistfilename = self.samplelistfilename
         self.analysis_paramsgui.extractmetadatafilename = self.extractmetadatafilename 
@@ -602,14 +681,16 @@ class MainWindow(QMainWindow):
         self.analysis_paramsgui.fragfilename = self.fragfilename
         Path(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem).mkdir(parents=True, exist_ok=True)
         Path(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem / 'plots').mkdir(parents=True, exist_ok=True)
-        self.analysis_paramsgui.outputdir = self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem
-
+        self.analysis_paramsgui.outputdir /= self.analysis_paramsgui.filename.stem
+    
         self.analysis_paramsgui.statstgrps = [str(self.ui.combo_expgrp.currentText()), str(self.ui.combo_ctrgrp.currentText())]
         self.analysis_paramsgui.cvthresh = float(self.ui.lineEdit_cvthresh.text())
         if self.ui.radioButton_meancv.isChecked():
             self.analysis_paramsgui.cvparam = 'average CV'
         else:
             self.analysis_paramsgui.cvparam = 'median CV'
+            
+        
         self.analysis_paramsgui.PCA = self.ui.checkBox_pca.isChecked()
         self.analysis_paramsgui.Dendrogram = self.ui.checkBox_dend.isChecked()
         self.analysis_paramsgui.bootstrap = self.dialog.ui.checkBox_bootstrap.isChecked()
@@ -635,7 +716,8 @@ class MainWindow(QMainWindow):
         self.analysis_paramsgui.maxisowin = float(self.ui.combo_maxisoshift.currentText())
         self.analysis_paramsgui.grpave = True
         self.analysis_paramsgui.prperr = True
-        self.analysis_paramsgui.blnkfltr =  self.ui.checkBox_blankfilter.isChecked()
+        self.analysis_paramsgui.blnkfltr = self.ui.checkBox_blankfilter.isChecked()
+        
         if self.ui.radioButton_blankfilter_abs.isChecked():
             self.analysis_paramsgui.blankfilparam = 'absolute'
             self.analysis_paramsgui.blankfilthresh = float(self.ui.lineEdit_blankfilter_absthresh.text())
@@ -646,39 +728,49 @@ class MainWindow(QMainWindow):
         if self.ui.checkBox_blankfilter.isChecked() and self.analysis_paramsgui.blnkgrp == '':
             self.analysis_paramsgui.blnkgrp = 'Blanks'
         self.analysis_paramsgui.ppmthresh = float(self.ui.lineEdit_ppmthresh.text())
-
-    def regenerateplts(self): #revenerate plots after first run
-            #should refactor this to not need seperate regenerate calls, just do in individual objects
+    
+    
+    def regenerateplts(self):
         pltfile = self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv')
         dfs = self.filtereddfs
         grpsts = self.groupsets
-         
-        if self.analysis_paramsgui.CVfil:#needed to use ionlist instead of filtering down like others, not sure why
+    
+        if self.analysis_paramsgui.CVfil:
             self.prevcv.reset(self, '', '')
             stop_functime('cvplt complete')
+    
         self.ftplt.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', '', '')
         stop_functime('ftplt complete')
+    
         self.dend.reset(pltfile, '', '')
         stop_functime('dendrogram complete')
+    
         if self.analysis_paramsgui.PCA:
             self.pca.reset(pltfile, '', '')
             stop_functime('nmds complete')
+    
         if self.analysis_paramsgui.FC3Dplt:
             self.fc3d.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', dfs, grpsts)
             stop_functime('fc3d complete')
+    
         if self.analysis_paramsgui.KMD:
             self.kmd.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', dfs, grpsts)
             stop_functime('kmd complete')
+    
         if self.analysis_paramsgui.MZRTplt:
             self.mzrt.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', dfs, grpsts)
             stop_functime('mzrt complete')
+    
         if self.analysis_paramsgui.Volcanoplt:
             self.volcano.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', dfs, grpsts)
             stop_functime('volcano complete')
+    
         self.heatmap.reset(self,  'heatmap', self.ui.frame_heatmap, pltfile)
         stop_functime('heatmap complete')
+    
         self.samplecorr.reset(self.analysis_paramsgui.outputdir / 'iondict.csv', dfs, grpsts)
         stop_functime('samplecorr complete')
+    
         self.ui.label_status.setText('Update Complete')
 
         

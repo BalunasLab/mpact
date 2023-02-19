@@ -21,9 +21,17 @@ def format_check(parent):
             msdata = pd.read_csv(parent.filename, sep = ',', header = None, index_col = None) #imports feature list
             if msdata.iloc[0, 0] == 'row ID':
                 reformat_mzmine(Path(parent.filename))
+            remove_duplicates(Path(parent.filename))
     except Exception:
         pass
         return()
+
+def remove_duplicates(file):
+    print('test')
+    data = pd.read_csv(file, sep = ',', header = [0,1,2], index_col = [0]) #imports data
+    print(data[data.index.duplicated(keep='first')])
+    data = data[~data.index.duplicated(keep='first')]
+    data.to_csv(file, header = True, index = True) #saves formatted backup for later use
 
 
 def reformat_mzmine(file):
