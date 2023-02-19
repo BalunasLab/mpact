@@ -81,6 +81,7 @@ class ui_plot:
         frame.setLayout(parent.pltlayout[currplt])
         parent.ax[currplt] = parent.canvas[currplt].figure.subplots()
         parent.ax[currplt].set_axisbelow(True)
+        self.event = ''
 
         self.fcsfont = {'fontname': 'Bahnschrift', 'weight': 'bold', 'size': 20}
         self.fhfont = {'fontname': 'Bahnschrift', 'weight': 'bold', 'size': 25}
@@ -100,8 +101,10 @@ class ui_plot:
 
     def reset(self, file, filtereddfs, groupsets):
         self.parent.ax[self.currplt].clear()
-        self.parent.canvas[self.currplt].draw()
+        #self.parent.canvas[self.currplt].draw()
         self.plot(self.parent, file, filtereddfs, groupsets)
+        self.parent.canvas[self.currplt].mpl_disconnect(self.event)
+
 
     
 #subclassed plot methods
@@ -225,7 +228,7 @@ class show_featureplt(ui_plot): #filtered feature plot
         parent.ax[self.currplt].set_ylim([0, 2000])
         parent.ax[self.currplt].grid()
         parent.ax[self.currplt].legend()
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
+        self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
         parent.fig[self.currplt].subplots_adjust(left=.1, right=.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
 
@@ -280,7 +283,7 @@ class plot_heatmap(): #heatmap
         parent.canvas[currplt].figure.axes[2].callbacks.connect('xlim_changed', on_xlims_change)
         parent.canvas[currplt].figure.axes[2].callbacks.connect('ylim_changed', on_ylims_change)
         parent.canvas[currplt].figure.axes[2].set_picker(True)
-        parent.canvas[currplt].figure.canvas.mpl_connect('pick_event', onpick8)
+        self.event = parent.canvas[currplt].figure.canvas.mpl_connect('pick_event', onpick8)
         parent.fig[currplt].subplots_adjust(left=0.015,right=0.986,
                     bottom=0.271,top=0.975,
                     hspace=0.005,wspace=0.005)
@@ -311,16 +314,7 @@ class plot_heatmap(): #heatmap
                     hspace=0.005,wspace=0.005)
         parent.highlight[currplt], = parent.canvas[currplt].figure.axes[2].plot([], [], color='yellow', linestyle='-', linewidth=1)
         
-        def onpick8(event):
-            iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
-            coord = [event.mouseevent.xdata,event.mouseevent.ydata]
-            parent.heatind = int(np.floor(coord[1]))
-            name = msdata.index.tolist()[parent.cmind[parent.heatind]]    
-    
-            parent.ui.lbl_featurename.setText('Compound: ' + name)
-            parent.ui.lbl_featurert.setText('Retention time: ' + str(iondict.loc[name,'Retention time (min)']))
-            parent.ui.lbl_featuremz.setText('m/z: ' + str(iondict.loc[name,'m/z']))
-            parent.highlight_feature(name)
+
  
         def on_xlims_change(event_ax):#make it soi can use these methods in the first call befre regeneration
             heatxlim = event_ax.get_xlim()
@@ -346,7 +340,6 @@ class plot_heatmap(): #heatmap
         parent.canvas[currplt].figure.axes[2].callbacks.connect('xlim_changed', on_xlims_change)
         parent.canvas[currplt].figure.axes[2].callbacks.connect('ylim_changed', on_ylims_change)
         parent.canvas[currplt].figure.axes[2].set_picker(True)
-        parent.canvas[currplt].figure.canvas.mpl_connect('pick_event', onpick8)
         
         parent.canvas[currplt].figure.set_facecolor(self.plotbackground)
         #parent.canvas[currplt].figure.axes[2].set_xlabel('Sample',  **self.fcsfont)
@@ -389,7 +382,7 @@ class plot_mzrt(ui_plot): #feature mass vs retention time plot
         parent.ax[self.currplt].set_ylim(0, 1850)
         parent.ax[self.currplt].legend()
         
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
+        self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('Retention time (min)', 'm/z')))
         parent.fig[self.currplt].subplots_adjust(left=.1,right=.95,
                             bottom=0.15,top=0.9,
                             hspace=0.2,wspace=0.2)
@@ -446,7 +439,7 @@ class kendrick(ui_plot): #plots mass defect vs nominal mass
         parent.ax[self.currplt].set_ylim(0, 1)
         parent.ax[self.currplt].grid()
         parent.ax[self.currplt].legend()
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('m/z', 'kmd')))
+        self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', lambda event: self.onpick(event, parent, iondict, ('m/z', 'kmd')))
         parent.fig[self.currplt].subplots_adjust(left=0.1, right=0.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
 
@@ -515,7 +508,7 @@ class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
         def on_pick_event(event):
             self.onpick(event, parent, iondict, ('logfc', '-logq'))
         
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', on_pick_event)
+        self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', on_pick_event)
         
         parent.fig[self.currplt].subplots_adjust(left=.1, right=.95, bottom=0.15, top=0.9, hspace=0.2, wspace=0.2)
         parent.canvas[self.currplt].draw()
@@ -682,7 +675,7 @@ class plot_PCA(ui_plot):
             parent.highlight[self.currplt].set_data(coord[0,0],coord[0,1])
             parent.canvas[self.currplt].draw_idle()
         
-        parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', picksample)
+        self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', picksample)
         parent.fig[self.currplt].subplots_adjust(left=.1, right=.9, bottom=0.1, top=0.9, hspace=0.2, wspace=0.2)
         #x0,x1 = parent.ax[self.currplt].get_xlim()
         #0,y1 = parent.ax[self.currplt].get_ylim()

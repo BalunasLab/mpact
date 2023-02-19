@@ -304,7 +304,7 @@ class UIFunctions(MainWindow):
             url = url + precursor + r'''%22,%22spectrum_string%22:"'''
             url = url + fragments + r'''%22,%22desc%22:"'''
             url = url + description + r'''%22}'''
-            print(url)
+            #print(url)
             webbrowser.open(url)
 
             #used for external version with nonlogin masst            
