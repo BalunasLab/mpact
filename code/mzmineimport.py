@@ -21,16 +21,36 @@ def format_check(parent):
             msdata = pd.read_csv(parent.filename, sep = ',', header = None, index_col = None) #imports feature list
             if msdata.iloc[0, 0] == 'row ID':
                 reformat_mzmine(Path(parent.filename))
-            remove_duplicates(Path(parent.filename))
+            if msdata.iloc[0, 0] == 'Bucket label':
+                reformat_metaboscape(Path(parent.filename))
     except Exception:
         pass
         return()
 
-def remove_duplicates(file):
-    print('test')
-    data = pd.read_csv(file, sep = ',', header = [0,1,2], index_col = [0]) #imports data
-    print(data[data.index.duplicated(keep='first')])
-    data = data[~data.index.duplicated(keep='first')]
+
+def reformat_metaboscape(file):
+    data = pd.read_csv(file, sep = ',', header = None, index_col = None)
+    data.iloc[0:3, 0] = ('','','Compound')
+    data.iloc[0:3, 1] = ('','','Retention time (min)')
+    data.iloc[0:3, 2] = ('','','m/z')
+    
+    mz = list(data.iloc[:,2])
+    data.iloc[:,2] = data.iloc[:,1]
+    data.iloc[:,1] = mz
+    
+    injections = list(data.iloc[0,3:])
+    groups = list(data.iloc[1,3:])
+    samples = list(data.iloc[2,3:])
+    
+    data.iloc[0,3:] = groups
+    data.iloc[1,3:] = samples
+    data.iloc[2,3:] = injections
+    
+    data=data.drop(data.columns[3:5], axis=1)
+    data.to_csv('test222.csv', header = False, index = False) #saves formatted backup for later use This line might break on import of new files...
+    data = pd.read_csv('test222.csv', sep = ',', header = [0,1,2], index_col = [0]) #imports data
+    
+    data.index = data.index + data.groupby(level=0).cumcount().astype(str).replace('0','')
     data.to_csv(file, header = True, index = True) #saves formatted backup for later use
 
 
