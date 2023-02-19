@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.ui.label_credits.setText('Rev 22.01.02')
+        self.ui.label_credits.setText('Rev 23.02.19')
                 
         #initialize other dialog windows
         self.dialog = dialog()
