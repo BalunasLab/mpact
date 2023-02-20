@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_main.ui'
+# Form implementation generated from reading ui file 'C:\Users\rsamples\Desktop\Project folder\code\ui_main.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -6658,7 +6658,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-        self.stackedWidget.setCurrentIndex(1)
+        self.stackedWidget.setCurrentIndex(5)
         self.stackedWidget_plot.setCurrentIndex(7)
         self.stackedWidget_review.setCurrentIndex(0)
         self.stackedWidget_grpanalysis.setCurrentIndex(1)
@@ -6821,9 +6821,11 @@ class Ui_MainWindow(object):
         self.treeWidget.headerItem().setText(0, _translate("MainWindow", "Compound"))
         self.treeWidget.headerItem().setText(1, _translate("MainWindow", "m/z"))
         self.treeWidget.headerItem().setText(2, _translate("MainWindow", "TR"))
-        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Groups"))
-        self.treeWidget.headerItem().setText(4, _translate("MainWindow", "FC"))
-        self.treeWidget.headerItem().setText(5, _translate("MainWindow", "Hits"))
+        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Log(Abundance)"))
+        self.treeWidget.headerItem().setText(4, _translate("MainWindow", "Sets"))
+        self.treeWidget.headerItem().setText(5, _translate("MainWindow", "Groups"))
+        self.treeWidget.headerItem().setText(6, _translate("MainWindow", "FC"))
+        self.treeWidget.headerItem().setText(7, _translate("MainWindow", "Hits"))
         self.lbl_blankfil_ppmthresh.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" color:#d4d4d4;\">PPM Theshold</span></p></body></html>"))
         self.lineEdit_ppmthresh.setText(_translate("MainWindow", "10"))
         self.btn_details_2.setToolTip(_translate("MainWindow", "View Feature Details"))

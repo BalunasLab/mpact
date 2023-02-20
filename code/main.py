@@ -330,7 +330,7 @@ class MainWindow(QMainWindow):
         itemdict = {}
         self.ui.treeWidget.clear()
         for i, row in iondict.iterrows():
-            item = QtWidgets.QTreeWidgetItem([row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(row['groups']), str(round(row['fc'], 2)), str(int(row['hits']))])
+            item = QtWidgets.QTreeWidgetItem([row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(round(row['logmax'],2)), str(row['groups']), str(row['groups']), str(round(row['fc'], 2)), str(int(row['hits']))])
             itemdict[i] = item
             self.ui.treeWidget.addTopLevelItem(item)
     
