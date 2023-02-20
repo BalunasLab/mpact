@@ -99,6 +99,13 @@ Check if low_memory=False increases ram usage for average grps?
     generated each time if filtering is off but they are always true
 '''
 
+class NumericalTreeWidgetItem(QtWidgets.QTreeWidgetItem):
+    def __lt__(self, other):
+        column = self.treeWidget().sortColumn() # the second column
+        try:
+            return float(self.text(column)) < float(other.text(column))
+        except ValueError: # fallback to alphabetical sorting if the text is not a number
+            return super().__lt__(other)
 
 class query:
     """
@@ -330,7 +337,7 @@ class MainWindow(QMainWindow):
         itemdict = {}
         self.ui.treeWidget.clear()
         for i, row in iondict.iterrows():
-            item = QtWidgets.QTreeWidgetItem([row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(round(row['logmax'],2)), str(row['groups']), str(row['groups']), str(round(row['fc'], 2)), str(int(row['hits']))])
+            item = NumericalTreeWidgetItem([row['Compound'], str(round(row['m/z'], 4)), str(round(row['Retention time (min)'], 3)), str(int(row['max'])), str(row['groups']), str(row['groups']), str(round(row['fc'], 2)), str(int(row['hits']))])
             itemdict[i] = item
             self.ui.treeWidget.addTopLevelItem(item)
     

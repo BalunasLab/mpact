@@ -6821,7 +6821,7 @@ class Ui_MainWindow(object):
         self.treeWidget.headerItem().setText(0, _translate("MainWindow", "Compound"))
         self.treeWidget.headerItem().setText(1, _translate("MainWindow", "m/z"))
         self.treeWidget.headerItem().setText(2, _translate("MainWindow", "TR"))
-        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Log(Abundance)"))
+        self.treeWidget.headerItem().setText(3, _translate("MainWindow", "Max"))
         self.treeWidget.headerItem().setText(4, _translate("MainWindow", "Sets"))
         self.treeWidget.headerItem().setText(5, _translate("MainWindow", "Groups"))
         self.treeWidget.headerItem().setText(6, _translate("MainWindow", "FC"))
