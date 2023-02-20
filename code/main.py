@@ -3,12 +3,13 @@ MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
 
+import re
 
 import sys
 import pandas as pd
 pd.options.mode.chained_assignment = None  # default='warn'
 import time
-
+import string
 
 import platform
 from PyQt5 import QtCore, QtWidgets
@@ -371,12 +372,26 @@ class MainWindow(QMainWindow):
             x = x + 1
         
         def onItemClicked(): #show structure of selected match
+        
+            def clean_ascii(text):
+                printable = set(string.printable)
+                ascii_chars = filter(lambda x: x in printable, text)
+                return ''.join(ascii_chars)
+        
+                
             if len(self.ftrdialog.ui.treeWidget.selectedItems()) > 0:
                 item = self.ftrdialog.ui.treeWidget.selectedItems()[0]
-                m = indigo.loadMolecule(item.text(5))
-                indigo.setOption('render-image-size', '400,400')
-                renderer.renderToFile(m, 'selected.png')
-                pixmap = QPixmap('selected.png')
+                cmpd =  clean_ascii(item.text(0))
+                cmpd = re.sub(r'\/<>.*{}\|', ' ', cmpd)
+
+                if os.path.isfile('compoundimages/' + (cmpd + '.png')):
+                    pixmap = QPixmap('compoundimages/' + (cmpd + '.png'))
+                else:
+                    m = indigo.loadMolecule(item.text(5))
+                    indigo.setOption('render-image-size', '400,400')
+                    renderer.renderToFile(m, 'compoundimages/' + (cmpd + '.png'))
+                    pixmap = QPixmap('compoundimages/' + (cmpd + '.png'))
+                
                 pixmap2 = pixmap.scaled(400, 400, QtCore.Qt.KeepAspectRatio)
                 self.ftrdialog.ui.label.setPixmap(pixmap2)
         

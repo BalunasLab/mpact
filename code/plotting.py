@@ -2,7 +2,8 @@
 MPACT
 Copyright 2022, Robert M. Samples, Sara P. Puckett, and Marcy J. Balunas
 """
-
+import concurrent.futures
+import concurrent
 import numpy as np
 import pandas as pd
 
@@ -127,6 +128,7 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         self.fcsfont = {'fontname':'Bahnschrift', 'weight': 'bold', 'size': 12}
         self.fhfont = {'fontname':'Bahnschrift', 'weight': 'bold', 'size': 25}
 
+    
     def plot(self, parent):
         # Get header info
         currplt = self.currplt
@@ -134,7 +136,7 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         msdata = msdata.reset_index()
         msdata.columns = ['biolgroup','sample','injection','abundance']
         msdata = msdata.drop(columns=['injection'])
-
+    
         # Get stats for the given ion
         summary = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_summarydata.csv'), sep=',', header=[0, 1], index_col=[0]).iloc[:, 2:].loc[parent.pickedfeature]
         combasd = summary.loc[['combASD']].to_frame()
@@ -143,7 +145,7 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         neff.index = neff.index.droplevel(level=0)
         ionsummary = summary.loc[['average']]
         ionsummary.index = ionsummary.index.droplevel(level=0)
-
+    
         ionsummary = ionsummary.to_frame()
         ionsummary.columns = ['average']
         ionsummary['combASD'] = combasd
@@ -151,24 +153,37 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         if parent.analysis_paramsgui.blnkfltr:
             ionsummary = ionsummary.drop([parent.analysis_paramsgui.blnkgrp], axis=0)
         ionsummary = ionsummary.reset_index()
-
-        # Make plots for the features
+    
+        # Define the plotting function for stripplot
+        def plot_stripplot():
+            sns.stripplot(ax=parent.ax[currplt][1], x="sample", y="abundance", hue="biolgroup",
+                          data=msdata, size=7, dodge=False, alpha=.5, zorder=2)
+    
+        # Define the plotting function for pointplot
+        def plot_pointplot():
+            sns.pointplot(ax=parent.ax[currplt][1], x="sample", y="abundance", color="#999999",
+                          data=msdata, dodge=False, join=False, markers="d", scale=.75,
+                          zorder=1, capsize=.1, errwidth=1, ci=95)
+    
+        # Define a list of plotting functions to be run in parallel
+        plot_functions = [plot_stripplot, plot_pointplot]
+    
+        # Make plots for the features using multithreading
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = [executor.submit(func) for func in plot_functions]
+    
+        # Wait for all threads to finish
+        for result in results:
+            result.result()
+    
         sns.barplot(ax=parent.ax[currplt][0], x="index", y="average", yerr=ionsummary["combASD"], errcolor=".2", edgecolor=".2", data=ionsummary, zorder=1)
         parent.ax[currplt][1].set_xticklabels(parent.ax[currplt][1].get_xticklabels(), rotation=90, horizontalalignment='center')
-
-        sns.stripplot(ax=parent.ax[currplt][1], x="sample", y="abundance", hue="biolgroup",
-                      data=msdata, size=7, dodge=False, alpha=.5, zorder=2)
-
-        sns.pointplot(ax=parent.ax[currplt][1], x="sample", y="abundance", color="#999999",
-                      data=msdata, dodge=False, join=False, markers="d", scale=.75,
-                      zorder=1, capsize=.1, errwidth=1, ci=95)
-
+    
         ylims = (0, parent.ax[currplt][1].get_ylim()[1] * 1.05)
         parent.ax[currplt][0].set_ylim(ylims)
         parent.ax[currplt][1].set_ylim(ylims)
         parent.ax[currplt][1].legend_.remove()
-        plt.tight_layout()
-        plt.show()
+        plt.tight_layout
     
     
     def reset(self):
