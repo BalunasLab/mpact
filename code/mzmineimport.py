@@ -14,7 +14,6 @@ def format_check(parent):
         if parent.filename.suffix == '.txt':
             reformat_msdial(Path(parent.filename))
             parent.filename = Path(str(parent.filename)[:-4] + '.csv')
-            print(parent.filename)
 
             
         if parent.filename.suffix == '.csv':
@@ -23,6 +22,11 @@ def format_check(parent):
                 reformat_mzmine(Path(parent.filename))
             if msdata.iloc[0, 0] == 'Bucket label':
                 reformat_metaboscape(Path(parent.filename))
+                
+            msdata = pd.read_csv(Path(parent.filename), sep = ',', header = [0,1,2], index_col = [0]) #imports data
+            if len(msdata[~msdata.index.duplicated()].index) > 0:
+                rename_duplicates(Path(parent.filename))
+            
     except Exception:
         pass
         return()
@@ -47,8 +51,8 @@ def reformat_metaboscape(file):
     data.iloc[2,3:] = injections
     
     data=data.drop(data.columns[3:5], axis=1)
-    data.to_csv('test222.csv', header = False, index = False) #saves formatted backup for later use This line might break on import of new files...
-    data = pd.read_csv('test222.csv', sep = ',', header = [0,1,2], index_col = [0]) #imports data
+    data.to_csv(file, header = False, index = False) #saves formatted backup for later use This line might break on import of new files...
+    data = pd.read_csv(file, sep = ',', header = [0,1,2], index_col = [0]) #imports data
     
     data.index = data.index + data.groupby(level=0).cumcount().astype(str).replace('0','')
     data.to_csv(file, header = True, index = True) #saves formatted backup for later use
@@ -62,7 +66,6 @@ def reformat_mzmine(file):
     
     xpos = 3
     for elem in data.iloc[0,3:]:
-        print(data.iloc[0,xpos])
         data.iloc[0,xpos]=data.iloc[0,xpos].split()[0][:-4]
         xpos += 1
         
@@ -88,3 +91,9 @@ def reformat_msdial(file):
     database = pd.read_csv(file.parent / (str(file.stem) + '.csv'), sep = ',', header = [0,1,2], index_col = None) #imports data
     database.iloc[:,0] = database.iloc[:,2].astype(str)+"_"+database.iloc[:,1].astype(str)
     database.to_csv(file.parent / (str(file.stem) + '.csv'), header = True, index = False) #saves formatted backup for later use This line might break on import of new files...
+
+def rename_duplicates(file):
+    data = pd.read_csv(file, sep = ',', header = [0,1,2], index_col = [0]) #imports data
+    
+    data.index = data.index + data.groupby(level=0).cumcount().astype(str).replace('0','')
+    data.to_csv(file, header = True, index = True) #saves formatted backup for later use
