@@ -459,7 +459,7 @@ class MainWindow(QMainWindow):
         
         # Reset spec if fragfilename exists and update abundplt
         if self.fragfilename != '':
-            self.spec.reset(self, self.fragdb.ions[self.pickedfeature].pattern)
+            self.spec.reset(self.fragdb.ions[self.pickedfeature].pattern)
         if self.ftrdialog.ui.stackedWidget.currentIndex() == 2 and not self.ftrdialog.isHidden():
             self.abundplt.reset()
 
@@ -615,6 +615,8 @@ class MainWindow(QMainWindow):
         msdata_unformatted = pd.read_csv(self.analysis_paramsgui.filename, sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
         msdata_formatted = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_formatted.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
         msdata_filtered = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+        #test = open('testionfilters.pkl', 'wb') # this exports ionfilters as a pickle for debuging
+        #pickle.dump(self.ionfilters, test)
         
         text = ''
         if self.analysis_paramsgui.relfil:

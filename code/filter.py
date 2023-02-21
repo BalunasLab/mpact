@@ -55,6 +55,7 @@ def decon(analysis_params, ionfilters):
     clusterdfs = []
     filtereddf = msdata_ind
     ftrgrps = {}
+    mergegroups = {}
 
     # Loop through retention times
     for elem in rtlist:
@@ -88,9 +89,13 @@ def decon(analysis_params, ionfilters):
                     clusterlist.append(decongroups[group])
                     tempdf = msdata_ind.loc[decongroups[group]].sort_values(by=['m/z'], ascending=False)
                     if len(tempdf.index.to_list()) > 0:
-                        singleslist.append(tempdf.index.to_list()[0])
-                        insourcelist += tempdf.index.to_list()[1:]
+                        precursor = tempdf.index.to_list()[0]
+                        fragments = tempdf.index.to_list()[1:]
+                        singleslist.append(precursor)
+                        insourcelist += fragments
                         clusterdfs.append(tempdf)
+                        mergegroups[precursor] = ionmerge(precursor, fragments)
+
 
     # Write out data
     msdata = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
@@ -101,11 +106,13 @@ def decon(analysis_params, ionfilters):
 
     # Update ion filters
     ionfilters['insource'] = ionfilter('', insourcelist)
+    ionfilters['insource'].merge = mergegroups
 
     # Update ion dictionary
     iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep=',', header=[0], index_col=0)
     iondict['pass_insource'] = ~iondict.index.isin(ionfilters['insource'].ions)
     iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
+    
     
     return ionfilters
 
