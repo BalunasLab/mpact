@@ -28,4 +28,5 @@ _Updates in Rev 22.02.19_
 - Reduced lag when selecting features
 - Added multithreading when generating feature abundance plots
 - Fixed bug that resulted in feature highlights not being visible in data reanalysis
+- Fixed issue preventing samples/injections from being selected and highlighted in NMDS plots
 - Database hit images viewed are saved as images in a folder to eliminate rerendering
