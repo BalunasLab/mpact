@@ -20,3 +20,12 @@ _Mac_
 
 Full instructions for data processing are included in the MPACT manual.
 
+_Updates in Rev 22.02.19_
+
+- Added support for Bruker Metaboscape peak lists
+- Added support for MS-DIAL MSP files
+- Added MSP file writer to export in-source fragmentation patterns
+- Reduced lag when selecting features
+- Added multithreading when generating feature abundance plots
+- Fixed bug that resulted in feature highlights not being visible in data reanalysis
+- Database hit images viewed are saved as images in a folder to eliminate rerendering
