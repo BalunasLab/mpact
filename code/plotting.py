@@ -6,6 +6,7 @@ import concurrent.futures
 import concurrent
 import numpy as np
 import pandas as pd
+import pickle
 
 import matplotlib
 #matplotlib.style.use('ggplot')
@@ -103,8 +104,8 @@ class ui_plot:
     def reset(self, file, filtereddfs, groupsets):
         self.parent.ax[self.currplt].clear()
         #self.parent.canvas[self.currplt].draw()
-        self.plot(self.parent, file, filtereddfs, groupsets)
         self.parent.canvas[self.currplt].mpl_disconnect(self.event)
+        self.plot(self.parent, file, filtereddfs, groupsets)
 
 
     
@@ -605,6 +606,7 @@ class plot_PCA(ui_plot):
         self.plot(parent, file, filtereddfs, groupsets)
 
     def plot(self, parent, file, filtereddfs, groupsets):
+        
         parent = self.parent
         parent.collapsereps = parent.dialog.ui.checkBox_collapsereps.isChecked()
         
@@ -685,7 +687,8 @@ class plot_PCA(ui_plot):
         def picksample(event): # fix this
             ind = event.ind
             coord = event.artist.get_offsets()[ind,:]
-            parent.pickedsample = principalDf.loc[principalDf['0'] == coord[0,0], :].loc[principalDf['1'] == coord[0,1], :].reset_index()
+
+            parent.pickedsample = principalDf.loc[principalDf.iloc[:,0] == coord[0,0], :].loc[principalDf.iloc[:,1] == coord[0,1], :].reset_index()
             parent.ui.lbl_injname.setText('Injection/Sample: ' + str(parent.pickedsample.iloc[0,0]))
             parent.highlight[self.currplt].set_data(coord[0,0],coord[0,1])
             parent.canvas[self.currplt].draw_idle()
