@@ -19,3 +19,4 @@ _Mac_
 4. click run button (green arrow in top toolbar)
 
 Full instructions for data processing are included in the MPACT manual.
+
