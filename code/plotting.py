@@ -684,13 +684,23 @@ class plot_PCA(ui_plot):
         #parent.ax[self.currplt].xaxis.set_major_locator(ticker.MultipleLocator(0.1))
         #parent.ax[self.currplt].yaxis.set_major_locator(ticker.MultipleLocator(0.1))
         
+        self.highlightcol = (0, 0, 0, 0)
+        parent.pickedsample = pd.DataFrame(0, index=['empty'], columns=['empty'])
+        
         def picksample(event): # fix this
             ind = event.ind
             coord = event.artist.get_offsets()[ind,:]
-
-            parent.pickedsample = principalDf.loc[principalDf.iloc[:,0] == coord[0,0], :].loc[principalDf.iloc[:,1] == coord[0,1], :].reset_index()
+            newsample = principalDf.loc[principalDf.iloc[:,0] == coord[0,0], :].loc[principalDf.iloc[:,1] == coord[0,1], :].reset_index()
+            
+            if newsample.iloc[0,0] == parent.pickedsample.iloc[0,0] and self.highlightcol != (0, 0, 0, 0):
+                self.highlightcol = (0, 0, 0, 0)
+            else:
+                self.highlightcol = 'yellow'
+            
+            parent.pickedsample = newsample
             parent.ui.lbl_injname.setText('Injection/Sample: ' + str(parent.pickedsample.iloc[0,0]))
             parent.highlight[self.currplt].set_data(coord[0,0],coord[0,1])
+            parent.highlight[self.currplt].set_color(self.highlightcol)
             parent.canvas[self.currplt].draw_idle()
         
         self.event = parent.canvas[self.currplt].figure.canvas.mpl_connect('pick_event', picksample)
