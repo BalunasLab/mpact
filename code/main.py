@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.ui.label_credits.setText('Rev 23.02.19')
+        self.ui.label_credits.setText('Rev 23.02.26')
                 
         #initialize other dialog windows
         self.dialog = dialog()
@@ -224,9 +224,10 @@ class MainWindow(QMainWindow):
         self.outputdir = ''
         self.fragfilename = ''
         self.colourdic = {} #dictionary of available colours
-        self.atlas = pd.read_csv('npatlas.csv', sep = ',', header = [0], index_col = [1])
+        #self.atlas = pd.read_csv('npatlas.csv', sep = ',', header = [0], index_col = [1])
         #self.atlas = pd.read_csv('pyranodb.csv', sep = ',', header = [0], index_col = [1])
-        #self.atlas = self.atlas[self.atlas['origin_type'] == 'Bacterium']
+
+        
 
         
         #initialize figure element dictionaries, can call with self.currplot as key
@@ -699,6 +700,15 @@ class MainWindow(QMainWindow):
         self.analysis_paramsgui = analysis_parameters()
         self.selset = self.ui.listWidget_pltgrps.currentRow()
         UIFunctions.writegroups(self)
+        
+        self.analysis_paramsgui.kingdom = self.ui.combo_kingdom.currentText()
+        self.analysis_paramsgui.genus = str(self.ui.lineEdit_genus.text())
+        self.atlas = pd.read_csv('npatlas.csv', sep = ',', header = [0], index_col = [1])
+        if len(self.analysis_paramsgui.kingdom) > 3:
+            self.atlas = self.atlas[self.atlas['origin_type'] == self.analysis_paramsgui.kingdom]
+        if len(self.analysis_paramsgui.genus) > 3:
+            self.atlas = self.atlas[self.atlas['genus'] == self.analysis_paramsgui.genus]
+
         
         self.analysis_paramsgui.graphfilters = ''
         if self.ui.checkBox_cv.isChecked():
