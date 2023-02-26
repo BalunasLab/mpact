@@ -20,6 +20,10 @@ _Mac_
 
 Full instructions for data processing are included in the MPACT manual.
 
+_Updates in Rev 22.02.26_
+
+- Added filtering of database hits by kingdom and genus
+
 _Updates in Rev 22.02.19_
 
 - Added support for Bruker Metaboscape peak lists
