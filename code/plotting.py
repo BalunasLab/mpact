@@ -43,7 +43,21 @@ import time
 
 from pvclust import PvClust
 
-class NavigationToolbar(NavigationToolbar2QT): #subclassed plot toolbar with extra button
+class NavigationToolbar(NavigationToolbar2QT):
+        """
+        This is a subclass of the NavigationToolbar2QT that provides additional functionality. It is responsible for creating a custom button in the plot toolbar. The custom button is used to configure the plot.
+
+        Constructor arguments:
+        - canvas: a FigureCanvasQTAgg instance representing the plot canvas
+        - parent: the parent widget
+        
+        Attributes:
+        - clearButtons: a list of QToolButton instances representing the plot toolbar buttons
+        - picker: a QAction instance representing the custom button
+        
+        Methods:
+        - __init__(self, canvas, parent): constructs a NavigationToolbar instance
+        """
         def __init__(self, canvas, parent):
             NavigationToolbar2QT.__init__(self,canvas,parent)
             self.clearButtons=[]
@@ -72,6 +86,26 @@ class NavigationToolbar(NavigationToolbar2QT): #subclassed plot toolbar with ext
         
 #General plot method#
 class ui_plot:
+    """
+    This class is used to define the plot layout and properties for the plot canvas. It is responsible for initializing the plot canvas and the plot axes, setting plot parameters, and resetting the plot.
+                                                                        
+    Constructor arguments:
+    - parent: the parent widget
+    - currplt: an integer representing the current plot number
+    - frame: a widget used as a container for the plot
+    
+    Attributes:
+    - fcsfont: a dictionary containing the font properties for text labels
+    - fhfont: a dictionary containing the font properties for title labels
+    - plotbackground: a tuple containing the plot background color
+    - event: a string representing the type of event that triggered the plot update
+    
+    Methods:
+    - __init__(self, parent, currplt, frame): constructs a ui_plot instance
+    - onpick(self, event, parent, iondict, plotcols): a method that highlights a picked feature on the plot and updates the label information
+    - reset(self, file, filtereddfs, groupsets): a method that clears the plot axes and updates the plot with new data.
+    """
+    
     def __init__(self, parent, currplt, frame):
         parent.fig[currplt] = Figure()
         parent.pltlayout[currplt] = QtWidgets.QVBoxLayout()
@@ -110,7 +144,27 @@ class ui_plot:
 
     
 #subclassed plot methods
-class plot_abund(): #abundance plot made of barchart and strip/point plots
+class plot_abund():
+    """
+    A class for generating an abundance plot made of a barchart and strip/point plots.
+    
+    Attributes:
+    parent (QMainWindow): The parent QMainWindow object that holds the plot widget.
+    currplt (int): The index of the current plot widget.
+    fcsfont (dict): The font dictionary used for the figure caption.
+    fhfont (dict): The font dictionary used for the figure title.
+    plotbackground (tuple): The background color of the plot.
+    
+    Methods:
+    __init__(self, parent, currplt):
+        Initializes the plot widget and sets the attributes.
+        
+    plot(self, parent):
+        Generates the abundance plot for the given feature using Seaborn bar, strip, and point plots.
+        
+    reset(self):
+        Clears the plot and generates a new abundance plot.
+    """
     def __init__(self, parent, currplt):
         self.parent = parent
         self.currplt = currplt
@@ -193,7 +247,26 @@ class plot_abund(): #abundance plot made of barchart and strip/point plots
         self.plot(self.parent)
         self.parent.canvas[self.currplt].draw()
 
-class show_spectrum(ui_plot): #MS2 spectrum viewer
+class show_spectrum(ui_plot):
+    """
+    A class for displaying a MS2 spectrum viewer plot widget.
+
+    Attributes:
+    parent (QMainWindow): The parent QMainWindow object that holds the plot widget.
+    currplt (int): The index of the current plot widget.
+    fcsfont (dict): The font dictionary used for the figure caption.
+    fhfont (dict): The font dictionary used for the figure title.
+    
+    Methods:
+    __init__(self, parent, currplt):
+        Initializes the plot widget and sets the attributes.
+        
+    plot(self, frags):
+        Generates the MS2 spectrum plot for the given fragments.
+        
+    reset(self, frags):
+        Clears the plot and generates a new MS2 spectrum plot.
+    """
     def __init__(self, parent, currplt):
         super().__init__(parent, currplt, parent.ftrdialog.ui.frame_spec)
         self.parent = parent
@@ -212,7 +285,23 @@ class show_spectrum(ui_plot): #MS2 spectrum viewer
         self.parent.ax[self.currplt].clear()
         self.plot(frags)
         
-class show_featureplt(ui_plot): #filtered feature plot
+class show_featureplt(ui_plot):
+    """
+    A class for displaying a filtered feature plot widget.
+
+    Attributes:
+    parent (QMainWindow): The parent QMainWindow object that holds the plot widget.
+    currplt (int): The index of the current plot widget.
+    fcsfont (dict): The font dictionary used for the figure caption.
+    fhfont (dict): The font dictionary used for the figure title.
+    
+    Methods:
+    __init__(self, parent, currplt, frame, iondictloc, filtereddfs, groupsets):
+        Initializes the plot widget and sets the attributes.
+        
+    plot(self, parent, iondictloc, filtereddfs, groupsets):
+        generates plot of m/z value and retention for each feature.
+    """
     def __init__(self, parent, currplt, frame, iondictloc, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
@@ -249,7 +338,24 @@ class show_featureplt(ui_plot): #filtered feature plot
         parent.canvas[self.currplt].draw()
 
 
-class plot_heatmap(): #heatmap
+class plot_heatmap():
+    """
+    This class generates a heatmap and adds it to the GUI. The heatmap is created using seaborn's clustermap function
+    and is displayed using matplotlib. The heatmap is interactive, allowing the user to select individual features and
+    see additional information about them.
+
+    Attributes:
+        plotbackground (tuple): The background color of the heatmap.
+        fcsfont (dict): A dictionary containing font information for labels on the heatmap.
+        fhfont (dict): A dictionary containing font information for the heatmap title.
+        event: The event that allows the user to select features on the heatmap.
+
+    Args:
+        parent (object): The parent object that the heatmap will be added to.
+        currplt (str): The name of the plot.
+        frame (object): The object that the heatmap will be added to.
+        file (str): The file that contains the data for the heatmap.
+    """
     def __init__(self, parent, currplt, frame, file):
         msdata = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep = ',', header = [2], index_col = [0]).iloc[:,2:]
         cm = sns.clustermap(msdata, standard_scale=0, metric="euclidean", method="ward", cmap = parent.analysis_paramsgui.colorscheme) #viridis
@@ -365,7 +471,25 @@ class plot_heatmap(): #heatmap
         self.figsize = parent.canvas[currplt].figure.get_size_inches()
         parent.canvas[currplt].draw()
 
-class plot_mzrt(ui_plot): #feature mass vs retention time plot
+class plot_mzrt(ui_plot):
+    """A subclass of ui_plot that plots a feature mass vs retention time plot.
+    
+    Args:
+        parent (object): The parent object of the plot.
+        currplt (int): The index of the current plot.
+        frame (object): The frame of the plot.
+        file (str): The path to the file that contains the ion dictionary.
+        filtereddfs (dict): A dictionary containing filtered dataframes for each group.
+        groupsets (dict): A dictionary containing group settings for each group.
+    
+    Attributes:
+        parent (object): The parent object of the plot.
+        currplt (int): The index of the current plot.
+    
+    Methods:
+        __init__(self, parent, currplt, frame, file, filtereddfs, groupsets): Initializes the plot and calls the plot method.
+        plot(self, parent, file, filtereddfs, groupsets): Plots the feature mass vs retention time plot.
+    """
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
@@ -404,8 +528,23 @@ class plot_mzrt(ui_plot): #feature mass vs retention time plot
                             hspace=0.2,wspace=0.2)
         parent.canvas[self.currplt].draw() 
 
-class plot_samplecorr(ui_plot): # sample spearman/pearson corelation plot generation
-                # need to add option to change correlation type
+class plot_samplecorr(ui_plot):
+    """
+    The plot_samplecorr class generates a heatmap plot of the Spearman or Pearson correlation between samples.
+    
+    Parameters:
+    
+    parent: the parent widget for the plot
+    currplt: the index of the current plot within the parent widget
+    frame: the parent frame for the plot
+    file: a path to the file containing the ion dictionary
+    filtereddfs: a dictionary containing filtered dataframes for each group in the plot
+    groupsets: a dictionary containing GroupSet objects for each group in the plot
+    Methods:
+    
+    __init__(self, parent, currplt, frame, file, filtereddfs, groupsets): initializes the plot by calling the plot() method with the given parameters
+    plot(self, parent, file, filtereddfs, groupsets): generates the plot with the given data. Reads the ion dictionary from a csv file and reads the filtered data from a csv file generated by the program. Calculates the Spearman correlation matrix and generates a heatmap plot using the Seaborn library. Adjusts the layout of the plot and draws it on the parent canvas.
+    """
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
         self.parent = parent
@@ -426,8 +565,19 @@ class plot_samplecorr(ui_plot): # sample spearman/pearson corelation plot genera
         self.parent.canvas[self.currplt].draw()
        
     
-class kendrick(ui_plot): #plots mass defect vs nominal mass
-                #need to change method name since this isnt actually kendrick mass but just mass defect
+class kendrick(ui_plot): 
+    """
+    The purpose of this class is to plot the mass defect versus the nominal mass of compounds based on the input files and parameters provided.
+
+    The __init__ method initializes the object with the following parameters:
+    
+    parent: The parent object of the current class instance.
+    currplt: The current plot index.
+    frame: The frame object that contains the plot.
+    file: The input file to be used for plotting.
+    filtereddfs: A dictionary containing filtered dataframes.
+    groupsets: A dictionary containing groupsets.
+    """
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         super().__init__(parent, currplt, frame)
         self.parent = parent
@@ -435,6 +585,12 @@ class kendrick(ui_plot): #plots mass defect vs nominal mass
         self.plot(parent, file, filtereddfs, groupsets)
 
     def plot(self, parent, file, filtereddfs, groupsets):
+        """
+        The method first reads the input file as a pandas dataframe iondict. If the blnkfltr parameter in parent.analysis_paramsgui is True, then the dataframes in filtereddfs are filtered to exclude blank data.
+        For each element in filtereddfs, the nominal mass (m/z) and mass defect (kmd) data is plotted as a scatter plot. The color of each point is determined by the plotcol parameter in groupsets. The legendname parameter in groupsets is used to label the points in the plot.
+        If the mdguide parameter in parent.analysis_paramsgui is True, then reference lines are plotted.
+        less
+        """
         iondict = pd.read_csv(file, sep=',', header=0, index_col=None)
 
         if parent.analysis_paramsgui.blnkfltr:
@@ -464,7 +620,10 @@ class kendrick(ui_plot): #plots mass defect vs nominal mass
             parent.ax[self.currplt].plot([63.6623, 733.314], [1, 0.8408], color='dimgrey', linestyle='-', linewidth=1)
             parent.ax[self.currplt].plot([0, 465.456], [0.9884, 0.5408], color='dimgrey', linestyle='-', linewidth=1)
 
-class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
+class plot_volcano(ui_plot): 
+    """
+    volcano plot of -log10p vs log2 abundance value
+    """
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         super().__init__(parent, currplt, frame)
         self.parent = parent
@@ -530,7 +689,9 @@ class plot_volcano(ui_plot): # volcano plot of -log10p vs log2 abundance value
         parent.canvas[self.currplt].draw()
  
 class plot_fc3d(ui_plot):
-    """3D mass, retention time, fold change plot, not currently highlightable"""
+    """
+    3D mass, retention time, fold change plot, not currently highlightable
+    """
 
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
@@ -568,7 +729,15 @@ class plot_fc3d(ui_plot):
         parent.canvas[self.currplt].draw()
 
 class plot_dendrogram(ui_plot):
-    """Dendrogram generation."""
+    """
+    Dendrogram generation.
+    
+    A CSV file of data for clustering is read and code performs hierarchical clustering using the ward method
+    and the euclidean distance metric. The resulting dendrogram is plotted on the given frame using the parent object's
+    figure and canvas. The dendrogram can be either regular or bootstrapped depending on the value of the
+    parent.analysis_paramsgui.bootstrap parameter. The resulting plot is saved to the parent object's figure and
+    displayed on the canvas.
+    """
 
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         ui_plot.__init__(self, parent, currplt, frame)
@@ -606,7 +775,26 @@ class plot_PCA(ui_plot):
         self.plot(parent, file, filtereddfs, groupsets)
 
     def plot(self, parent, file, filtereddfs, groupsets):
+        """Plot principal component analysis (PCA) or NMDS data.
         
+        Args:
+            parent (QWidget): Parent widget.
+            currplt (int): Current plot number.
+            frame (QFrame): Frame to hold the plot.
+            file (str): Path to the file containing the PCA data.
+            filtereddfs (list): List of filtered data.
+            groupsets (list): List of group sets.
+        
+        Attributes:
+            highlightcol (tuple): Tuple containing RGBA values used for highlighting.
+            event (int): Identifier for the pick event used to select points on the plot.
+        
+        Methods:
+            plot(self, parent, file, filtereddfs, groupsets): Plot the PCA data.
+            plot_point_cov(self, points, nstd=2, ax=None, **kwargs): Generate an ellipse for the confidence interval.
+            lighten_color(self, color, amount=0.5): Lighten a given color by a given amount.
+            plot_cov_ellipse(self, cov, pos, nstd=2, ax=None, **kwargs): Generate an optimized ellipse for the confidence interval.
+        """
         parent = self.parent
         parent.collapsereps = parent.dialog.ui.checkBox_collapsereps.isChecked()
         
@@ -713,13 +901,31 @@ class plot_PCA(ui_plot):
         parent.canvas[self.currplt].draw()
     
     def plot_point_cov(self, points, nstd=2, ax=None, **kwargs):
-        """Generate ellipse for the confidence interval"""
+        """Generate an ellipse for the confidence interval.
+
+        Args:
+            points (numpy.ndarray): Array of points to calculate the ellipse for.
+            nstd (int): Number of standard deviations to calculate the ellipse for. Default is 2.
+            ax (matplotlib.axes.Axes): The Axes instance on which to plot the ellipse. Default is None.
+            **kwargs: Additional keyword arguments to be passed to the matplotlib Ellipse constructor.
+        
+        Returns:
+            matplotlib.patches.Ellipse: Ellipse for the confidence interval.
+        """
         pos = points.mean(axis=0)
         cov = np.cov(points, rowvar=False)
         return self.plot_cov_ellipse(cov, pos, nstd, ax, **kwargs)
 
     def lighten_color(self, color, amount=0.5):
-        """Lighten the color of the ellipse by a given amount"""
+        """Lighten a given color by a given amount.
+
+        Args:
+            color (str or tuple): Color to be lightened, either as a string or a tuple of RGB values.
+            amount (float): Amount to lighten the color by. Default is 0.5.
+
+        Returns:
+            tuple: Tuple of RGB values for the lightened color.
+        """
         try:
             c = mc.cnames[color]
         except:
@@ -728,7 +934,18 @@ class plot_PCA(ui_plot):
         return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
     def plot_cov_ellipse(self, cov, pos, nstd=2, ax=None, **kwargs):
-        """Generate optimized ellipse for the confidence interval"""
+        """Generate an optimized ellipse for the confidence interval.
+
+        Args:
+            cov (numpy.ndarray): Array containing the covariance matrix.
+            pos (numpy.ndarray): Array containing the mean values.
+            nstd (int): Number of standard deviations to calculate the ellipse for. Default is 2.
+            ax (matplotlib.axes.Axes): The Axes instance on which to plot the ellipse. Default is None.
+            **kwargs: Additional keyword arguments to be passed to the matplotlib Ellipse constructor.
+
+        Returns:
+            matplotlib.patches.Ellipse: Ellipse for the confidence interval.
+        """
         def eigsorted(cov):
             vals, vecs = np.linalg.eigh(cov)
             order = vals.argsort()[::-1]
@@ -745,7 +962,20 @@ class plot_PCA(ui_plot):
         return ellip
  
 class prev_cv(ui_plot):
-    # CV rarifactions plot with mean and median CV
+    """
+    Plot the CV rarefaction plot with mean and median CV.
+    
+    Args:
+    parent: A parent object representing the main window.
+    currplt: A string representing the current plot.
+    frame: A widget frame containing the plot.
+    file: A string representing the file name.
+    filtereddfs: A dictionary containing filtered data.
+    groupsets: A dictionary containing groups of sets.
+    
+    Returns:
+    None
+    """
     def __init__(self, parent, currplt, frame, file, filtereddfs, groupsets):
         super().__init__(parent, currplt, frame)
         self.parent = parent
@@ -797,9 +1027,63 @@ class prev_cv(ui_plot):
         parent.canvas[currplt].draw()
 
     
-def gen_upsetplt(parent):
-    #upset plot to visualize sets of compounds in groups
-    #need to do something to handle groups with names that are substrings of other group names
+def gen_upsetplt(parent):    #need to do something to handle groups with names that are substrings of other group names
+    """
+    Generate an upset plot to visualize sets of compounds in groups. This function also handles groups with names that are substrings of other group names.
+
+    Parameters:
+    parent (object): The parent object that the generated plot will be a child of.
+
+    Returns:
+    None
+    """
+
+def gen_treemap(parent):
+    #generate treemap for visualization of filtering levels
+    #needed to refilter data and see how df row lengths change to avoid issues with one feature being in multiple filter lists
+    plt.clf()
+    msdata_filtered = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
+    fltrcnt, color = {}, []
+    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
+    total = len(iondict.index)
+    current = total
+    
+    if parent.analysis_paramsgui.relfil:
+        filteredsetsize = len(iondict[iondict['pass_relfil']].index)
+        fltrcnt['Mispicked'] = current - filteredsetsize
+        current = filteredsetsize
+        color.append('#0000ff')
+    
+    if parent.analysis_paramsgui.blnkfltr:
+        filteredsetsize = len(iondict[iondict['pass_blnkfil']].index)
+        fltrcnt['Blank'] = current - filteredsetsize
+        current = filteredsetsize
+        color.append('#00aaaa')
+    
+    if parent.analysis_paramsgui.CVfil:
+        fltrcnt['Nonreproducible'] = len(parent.ionfilters['cv'].ions)
+        current = current - fltrcnt['Nonreproducible']
+        color.append('#ff0000')
+    
+    if parent.analysis_paramsgui.decon:
+        fltrcnt['Insource'] = len(parent.ionfilters['insource'].ions)
+        color.append('#00aa00')
+    
+    fltrcnt['High Quality'] = len(msdata_filtered.index)
+    color.append('#000000')
+
+    sizes = list(fltrcnt.values())
+    total_size = sum(fltrcnt.values())
+    labels = [f"{label}\n{size}\n{round(100*size/total_size,1)}%" for label, size in fltrcnt.items()]
+
+    squarify.plot(sizes=sizes, label=labels, color=color, alpha=0.3, text_kwargs={'fontsize': 10})
+    plt.axis('off')
+    plt.savefig('treemap.png', dpi=150, bbox_inches='tight')
+    pixmap = QPixmap('treemap.png')
+    parent.ui.label_treemap.setPixmap(pixmap)
+
+
+
     iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=0, index_col=None)
 
     # Apply filters if required
@@ -851,6 +1135,17 @@ def gen_upsetplt(parent):
 def gen_treemap(parent):
     #generate treemap for visualization of filtering levels
     #needed to refilter data and see how df row lengths change to avoid issues with one feature being in multiple filter lists
+    """
+    The gen_treemap function generates a treemap for visualizing filtering levels. The function reads a CSV file containing the
+    filtered data and another CSV file containing information about the ions. The function then filters the ion data based on 
+    various filter options and calculates the number of ions filtered by each filter. Finally, the function generates a treemap 
+    to display the number of ions that passed each filter and saves it as a PNG file. The treemap is then displayed in a QLabel in the GUI.
+
+    Args:
+    
+    parent: the parent widget where the treemap will be displayed
+
+    """
     plt.clf()
     msdata_filtered = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
     fltrcnt, color = {}, []

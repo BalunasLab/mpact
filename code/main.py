@@ -306,7 +306,10 @@ class MainWindow(QMainWindow):
     
         
     def fulldbsearch(self):
-        # Run full compound database search. Probably best to update this with real database approach so that search doesn't need to be rerun but this might be RAM intensive
+        """
+        Run a full compound database search. Filter the database matches within a specified mass window.
+        Concatenate the hits and sort them by parts-per-million (ppm).
+        """
         self.hitdb = {}
         iondict = pd.read_csv(self.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
         iondict['hits'] = ''
@@ -352,8 +355,17 @@ class MainWindow(QMainWindow):
                 
 
                                      
-    def runsearch(self, mass): # run search for a mass, refactor if I can save a database of hits
+    def runsearch(self, mass): # refactor if I can save a database of hits
         #possibly make a third common method used in both dbsearch and this method
+        """
+        Runs a search for a mass and displays the database hits in the feature tree dialog.
+        
+        Args:
+            mass (float): The mass to search for.
+        
+        Returns:
+            None.
+        """
         ppmwindow = self.analysis_paramsgui.ppmthresh
         hits_h = self.atlas[abs(1000000*(self.atlas['compound_m_plus_h'] - mass)/self.atlas['compound_m_plus_h']) < ppmwindow]
         hits_h['ppm'] = abs(1000000*(hits_h['compound_m_plus_h'] - mass)/hits_h['compound_m_plus_h'])
@@ -404,6 +416,15 @@ class MainWindow(QMainWindow):
             self.ftrdialog.ui.treeWidget.setCurrentItem(itemdict[0])
                 
     def highlight_feature(self, newfeature):
+        """
+        Highlights the selected feature in all plots.
+
+        Args:
+            newfeature (str): The name of the new feature to highlight.
+        
+        Returns:
+            None.
+        """
         # Deselect the highlighted feature if clicked twice
         if newfeature == self.pickedfeature and self.highlightcol != (0, 0, 0, 0):
             self.highlightcol = (0, 0, 0, 0)
@@ -471,6 +492,15 @@ class MainWindow(QMainWindow):
             self.mv_heatmap(1)
     
     def mv_heatmap(self, shift):
+        """
+        Moves heatmap selection up or down by a given shift value.
+        
+        Args:
+            shift (int): The value to shift the heatmap selection by.
+        
+        Returns:
+            None.
+        """
         if self.ui.stackedWidget_plot.currentIndex() != 8 or self.ui.stackedWidget.currentIndex() != 3:
             return
     
@@ -486,7 +516,11 @@ class MainWindow(QMainWindow):
      
     
     def read_save(self, savefile):
-        # Open and read the pickle file
+        """Reads a saved analysis session from a pickle file.
+
+        Args:
+            savefile (Path): The path to the saved session file.
+        """
         with open(savefile, 'rb') as read_pi:
             self.savedata = pickle.load(read_pi)
     
@@ -525,7 +559,9 @@ class MainWindow(QMainWindow):
         UIFunctions.updatesets(self)
         
         
-    def write_save(self): #may move to uifunctions
+    def write_save(self):
+        """Writes the current analysis session to a pickle file.
+        """
         self.analysis_paramsgui.queries = self.querys # WRITES QUERY DB FOR GROUPSETS IN ANALYSISPARAMETERS, WILL NEED TO CHANGE WHEN MVC IMPLEMENTED
         file_pi = open(self.analysis_paramsgui.outputdir/(self.analysis_paramsgui.filename.stem + '.mpct'), 'wb')
         self.savedata['parameters'] = self.analysis_paramsgui

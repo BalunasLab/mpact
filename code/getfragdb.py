@@ -2,16 +2,52 @@
 import numpy as np
 
 class ion():
+    """
+    A class representing a ion with associated fragmentation data.
+    
+    Attributes:
+    -----------
+    fragparams: dict
+        A dictionary of parameters for the ion.
+    pattern: np.ndarray
+        A numpy array representing the ion's pattern.
+    """
+    
     def __init__(self, fragparams, pattern):
         self.fragparams = fragparams
         self.pattern = pattern
 
 class fragmentation_db():
+    """
+    A class representing a database of fragmentation ions.
+    
+    Attributes:
+    -----------
+    regex: list
+        A list of regular expressions for the database.
+    ions: dict
+        A dictionary of ions in the database.
+    """
+    
     def __init__(self, regex):
         self.regex = regex
         self.ions = {}
 
 def importfrag_v1(fragfile):
+    """
+    Imports a fragmentation database from a Progenesis-style MSP file.
+    
+    Parameters:
+    -----------
+    fragfile: str
+        The path to the MSP file.
+    
+    Returns:
+    --------
+    fragmentation_db
+        A database of fragmentation ions.
+    """
+    
     fragmsp = open(fragfile, 'r')
     regex = []
     while True:
@@ -60,6 +96,19 @@ def importfrag_v1(fragfile):
     return(fragdb)
 
 def importfrag_v2(fragfile):
+    """
+    Imports a fragmentation database from an MS-DIAL-style MSP file.
+    
+    Parameters:
+    -----------
+    fragfile: str
+        The path to the MSP file.
+    
+    Returns:
+    --------
+    fragmentation_db
+        A database of fragmentation ions.
+    """
     fragmsp = open(fragfile, 'r')
     regex = []
     while True:
@@ -99,6 +148,20 @@ def importfrag_v2(fragfile):
     return(fragdb)
 
 def importfrag(fragfile):
+    """
+    Imports a fragmentation database from an MSP file, detecting the file type automatically.
+    
+    Parameters:
+    -----------
+    fragfile: str
+        The path to the MSP file.
+    
+    Returns:
+    --------
+    fragmentation_db
+        A database of fragmentation ions.
+    """
+    
     fragmsp = open(fragfile, 'r')
     has_parentheses = False
     while True:

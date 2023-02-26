@@ -7,15 +7,38 @@ import pandas as pd
 import numpy as np
 import math
 import scipy.cluster.hierarchy as spc
+import mspwriter
 
-class ionmerge: #source and target list for ions to merge for mispicked filter
+class ionmerge:
+    """
+    A class representing a target ion and sources to merge for mispicked filter.
+
+    Parameters:
+        target (str): The target ion to merge.
+        sources (list): A list of sources to merge with the target ion.
+
+    Attributes:
+        target (str): The target ion to merge.
+        sources (list): A list of sources to merge with the target ion.
+    """
     def __init__(self, target, sources):
             self.target = target
             self.sources = []
             self.sources.append(sources)
 
-class ionfilter: #general ionfilter class with paramerters and list of ions to remove
-                #may not use long term since everything is in the iondict file now
+class ionfilter: 
+        """
+        A class representing a general ionfilter with parameters and a list of ions to remove.
+        
+        Parameters:
+            parameters (dict): A dictionary of parameters for the ionfilter.
+            ionlist (list): A list of ions to remove.
+        
+        Attributes:
+            params (dict): A dictionary of parameters for the ionfilter.
+            ions (list): A list of ions to remove.
+            merge (list): A list of ionmerge objects.
+        """
         def __init__(self, parameters, ionlist):
             self.params = parameters
             self.ions = ionlist
@@ -23,9 +46,16 @@ class ionfilter: #general ionfilter class with paramerters and list of ions to r
             
 
         
-def reformatcorr(corr): #reformatts correlation matrix to generate a list from sequential columns
-        # output list/series is used for deconvolution of ions
-        #reformat to for pos in range(1:corr.shape[0]) or something like that
+def reformatcorr(corr): #reformat to for pos in range(1:corr.shape[0]) or something like that
+    """
+    Reformats a correlation matrix to generate a list from sequential columns.
+    
+    Parameters:
+        corr (pd.DataFrame): The correlation matrix to be reformatted.
+    
+    Returns:
+        np.ndarray: A reformatted array derived from the input correlation matrix.
+    """
     corr = corr.to_numpy()
     reformatted = corr[1:,0]
     pos = 1
@@ -39,6 +69,20 @@ def reformatcorr(corr): #reformatts correlation matrix to generate a list from s
 
 
 def decon(analysis_params, ionfilters):
+    """
+    Perform peak deconvolution on the data and update the ion filters and dictionary.
+    
+    This function reads in formatted data and performs peak deconvolution using the correlation clustering method. It
+    then groups peaks into clusters, generates a list of precursor and fragment ions, and updates the ion filters and
+    dictionary. Finally, the function writes the formatted data back out to disk.
+    
+    Parameters:
+        analysis_params (object): Analysis parameters.
+        ionfilters (dict): Dictionary of ion filters.
+    
+    Returns:
+        dict: Updated dictionary of ion filters.
+    """
     # Read in data
     msdata_ind = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'),
                              sep=',', header=[2], index_col=[0, 1]).iloc[:, :1]
@@ -113,6 +157,8 @@ def decon(analysis_params, ionfilters):
     iondict['pass_insource'] = ~iondict.index.isin(ionfilters['insource'].ions)
     iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
     
+    # Convert ion filters to MSP format
+    mspwriter.convert_to_msp(ionfilters['insource'], analysis_params)
     
     return ionfilters
 
@@ -212,9 +258,31 @@ def cvfilter(analysis_params, ionfilterlist, threshold):
     return ionfilterlist
 
 # -----Deringing and relational filter algorithm-----
-def relationalfilter(analysis_params, ionfilterlist):#clean up index formatting, pull from ionmetadata
-                                                    #will need to change how this function is called when merging before other analysis is desired
-    #initial processing for ringing filter. Imports data, sorts by m/z, and converts to numpy array
+def relationalfilter(analysis_params, ionfilterlist):
+    """
+    Implements a de-ringing and relational filtering algorithm for MS data.
+
+    Parameters:
+        analysis_params (object): Analysis parameters.
+        ionfilterlist (dict): Dictionary of ion filters.
+
+    Returns:
+        dict: Dictionary of ion filters.
+
+    The algorithm works by first sorting the MS data by m/z, and then iterating over the data one ion at a time, 
+    comparing each ion to all subsequent ions that fall within a certain mass and retention time window. 
+    Ions that meet certain criteria are then merged into a single ion using the ionmerge class. 
+
+    The filtering criteria includes:
+    - A mass difference of less than a specified value
+    - A retention time difference of less than a specified value
+    - A difference between the mass difference and its floor when multiplied by a factor, indicating the presence of ring artifacts
+    - A difference between the mass difference and 0.5004 when accounting for the doubly-charged dimer, indicating the presence of dimer peaks
+
+    The function returns a dictionary of ion filters, with the 'relfil' filter containing a list of ions to remove, 
+    and a 'merge' attribute which contains the merge groups (as an ionmerge object) that specify which ions to merge.
+    """
+    
     print('Running relational filter')
     pdindex = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep = ',', header = [2], index_col = None)
     pdindex.drop(pdindex.columns.difference(['Compound','m/z','Retention time (min)']), 1, inplace=True)
@@ -259,6 +327,16 @@ def relationalfilter(analysis_params, ionfilterlist):#clean up index formatting,
 
 
 def mergeions(analysis_params, ion_filters):
+    """
+    Merges source to target ion abundances for mispicked peak filtering.
+    
+    Parameters:
+        analysis_params (object): Analysis parameters.
+        ion_filters (dict): Dictionary of ion filters.
+    
+    Returns:
+        None
+    """
     # Read in the data
     msdata_merged = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=[2], index_col=[0])
 
@@ -294,6 +372,16 @@ def mergeions(analysis_params, ion_filters):
     msdata_merged.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), header=False, index=False)
 
 def applyfilters(analysis_params, ion_filters):
+    """
+    Applies a list of ion filters to the data.
+    
+    Parameters:
+        analysis_params (object): Analysis parameters.
+        ion_filters (dict): Dictionary of ion filters.
+    
+    Returns:
+        None
+    """
     ms_data_out_filtered = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=None, index_col=None)  # reopen original data
     for elem in ion_filters:
         ms_data_out_filtered = listfilter(ms_data_out_filtered, ion_filters[elem].ions, False)

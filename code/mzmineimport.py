@@ -10,6 +10,9 @@ from pathlib import Path
 
 
 def format_check(parent):
+    """
+    Check if the file has the right format, and if not, reformat it.
+    """
     try:
         if parent.filename.suffix == '.txt':
             reformat_msdial(Path(parent.filename))
@@ -33,6 +36,11 @@ def format_check(parent):
 
 
 def reformat_metaboscape(file):
+    """Reformat a file from the Metaboscape software.
+    
+    Args:
+    - file (Path): the path of the file to reformat
+    """
     data = pd.read_csv(file, sep = ',', header = None, index_col = None)
     data.iloc[0:3, 0] = ('','','Compound')
     data.iloc[0:3, 1] = ('','','Retention time (min)')
@@ -59,6 +67,11 @@ def reformat_metaboscape(file):
 
 
 def reformat_mzmine(file):
+    """Reformat a file from the MZmine software.
+    
+    Args:
+    - file (Path): the path of the file to reformat
+    """
     data = pd.read_csv(file, sep = ',', header = None, index_col = None)
     data.iloc[0, 0] = 'Compound'
     data.iloc[0, 1] = 'm/z'
@@ -76,6 +89,11 @@ def reformat_mzmine(file):
 
 
 def reformat_msdial(file):
+    """Reformat a file from the MS-DIAL software.
+    
+    Args:
+    - file (Path): the path of the file to reformat
+    """
     database = pd.read_csv(file, sep = '\t', header = None, index_col = None) #imports data
     database.iloc[:,3] = database.iloc[:,2]
     database.iloc[:,2] = database.iloc[:,1]
@@ -93,6 +111,11 @@ def reformat_msdial(file):
     database.to_csv(file.parent / (str(file.stem) + '.csv'), header = True, index = False) #saves formatted backup for later use This line might break on import of new files...
 
 def rename_duplicates(file):
+    """Rename duplicate entries in the file's index to make them unique.
+
+    Args:
+    - file (Path): the path of the file to reformat
+    """
     data = pd.read_csv(file, sep = ',', header = [0,1,2], index_col = [0]) #imports data
     
     data.index = data.index + data.groupby(level=0).cumcount().astype(str).replace('0','')

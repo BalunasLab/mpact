@@ -294,7 +294,16 @@ class UIFunctions(MainWindow):
         UIFunctions.reset_ftrdialogbar(self)
         self.ftrdialog.ui.btn_spectrum.setStyleSheet(self.ui.ftbar_activebtn)
 
-    def masst(self): #mast search, may want to offload some of this to the another script
+    def masst(self): 
+        """
+        Launches the web browser and searches for mass spectra of selected feature in Mass Spectrometry Interactive Virtual Environment (MassIVE).
+        
+        Args:
+            None
+        
+        Returns:
+            None
+        """
         if self.fragdb != 'None' and self.fragdb.ions[self.pickedfeature].pattern.shape[0] > 0:
             description = str("MPACT_SUBMISSION:" + self.analysis_paramsgui.filename.stem + "_" + self.pickedfeature)
             precursor = str(self.fragdb.ions[self.pickedfeature].fragparams['PrecursorMZ']).strip()
@@ -313,11 +322,19 @@ class UIFunctions(MainWindow):
 
     #colour buttons
     def colour_picker1(self):
+        """
+        Allows user to pick a color from color dialog and sets the selected color to the selected query set's color attribute.
+
+        """
         color = QColorDialog.getColor()
         self.querys[self.selset].colour = color.name() 
         self.ui.btn_col1.setStyleSheet("QPushButton {border: 2px solid lightgrey; background-color: " + str(self.querys[self.selset].colour) +";}")
     
     def updatesets(self):
+        """
+        Updates the list of query sets in the GUI and sets the selected query set.
+
+        """
         selitem = self.ui.listWidget_pltgrps.currentRow() - 1
         selitem = max(selitem, 0)
         
@@ -332,6 +349,9 @@ class UIFunctions(MainWindow):
         
     
     def updategroups(self):
+        """
+        Updates the lists of groups for the selected query set in the GUI.
+        """
         selgroup = self.ui.listWidget_pltgrps.currentRow()
         self.selset = selgroup
     
@@ -352,6 +372,9 @@ class UIFunctions(MainWindow):
         )
     
     def writegroups(self):
+        """
+        Writes the changes made to the query set's name, included groups, excluded groups, and source groups in the GUI to the query object.
+        """
         if 0 <= self.selset < self.ui.listWidget_pltgrps.count():
             try:
                 self.querys[self.selset].name = self.ui.listWidget_pltgrps.item(self.selset).text()
@@ -366,6 +389,9 @@ class UIFunctions(MainWindow):
         
         
     def addgroup(self):
+        """
+        Adds a new query set to the list of query sets in the GUI and to the querys list.
+        """
         item = QListWidgetItem('New Feature Set')
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         self.ui.listWidget_pltgrps.addItem(item)
@@ -385,6 +411,9 @@ class UIFunctions(MainWindow):
 
             
     def removegroup(self):
+        """
+        Removes the selected query set from the list of query sets in the GUI and from the querys list.
+        """
         selitem = self.ui.listWidget_pltgrps.currentRow()
         self.querys.remove(self.querys[selitem])
         UIFunctions.updatesets(self)
@@ -392,8 +421,11 @@ class UIFunctions(MainWindow):
         
         
     #import buttons
-    def loadsession(self): #gets save file, calls read_save method in main, updates UI elements
-            #read save file
+    def loadsession(self):
+            """
+            Displays a file dialog to get the saved session file, calls the `read_save` method in `main.py` to read the saved 
+            data and updates the UI elements with the saved parameters.
+            """
             try:
                 self.savefile, _  = QFileDialog.getOpenFileName(self, 'Open file', self.recentdir , 
                                                                                "*.mpct")

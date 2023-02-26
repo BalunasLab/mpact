@@ -15,6 +15,21 @@ from pathlib import Path
 
 
 class groupset:  # parses the ions to be plotted as a specific color based on thier presence in user input sample groups
+    """
+    Parses the ions to be plotted as a specific color based on their presence in user input sample groups.
+
+    Args:
+    - name (str): The name of the group set.
+    - query (query_parameters): A query_parameters object.
+    - iondictloc (str): The file path to the ion dictionary location.
+
+    Attributes:
+    - legendname (str): The legend name of the group set.
+    - excl (list of str): The exclusion groups in the group set.
+    - incl (list of str): The inclusion groups in the group set.
+    - plotcol (str): The plot color of the group set.
+    - ionlist (list of str): The ions to be plotted in the group set.
+    """
     def __init__(self, name, query, iondictloc):
         self.legendname = query.name
         self.excl = query.excl
@@ -31,6 +46,12 @@ class groupset:  # parses the ions to be plotted as a specific color based on th
         self.ionlist = iondict.index.to_list()
        
 class analysis_parameters:
+    """
+    An empty class that is used as a placeholder to hold analysis parameters.
+    
+    Attributes:
+    - init (str): An initial string.
+    """
     def __init__(self):
         self.init = ''
 
@@ -117,6 +138,15 @@ def importdata():
 
 
 def run_MSFaST(self):
+    """
+    Runs MSFaST analysis with the given analysis parameters and data.
+    
+    Args:
+    self: Object instance of the MSFaST class.
+    
+    Returns:
+    None
+    """
     start_time()
 
     # Import analysis parameters and data

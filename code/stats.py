@@ -9,13 +9,39 @@ from scipy import stats
 from filter import listfilter
 
 def tstat(m1, sd1, n1, m2, sd2, n2):
+    """
+    Calculates the t-statistic for two independent samples with unequal variances.
+    
+    Args:
+        m1 (float): Sample mean of the first sample.
+        sd1 (float): Sample standard deviation of the first sample.
+        n1 (int): Sample size of the first sample.
+        m2 (float): Sample mean of the second sample.
+        sd2 (float): Sample standard deviation of the second sample.
+        n2 (int): Sample size of the second sample.
+    
+    Returns:
+        float: The calculated t-statistic.
+    """
     numerator = m1 - m2
     den1 = (sd1**2/n1).replace([np.inf, -np.inf, np.nan], 0)
     den2 = (sd2**2/n2).replace([np.inf, -np.inf, np.nan], 0)
     denominator = (den1 + den2)**0.5
     return(np.absolute(numerator/denominator))
 
-def ws(sd1, n1, sd2, n2): #welche satterthwaite
+def ws(sd1, n1, sd2, n2):
+    """
+    Calculates the effective sample size using the Welch-Satterthwaite equation.
+
+    Args:
+        sd1 (float): Sample standard deviation of the first sample.
+        n1 (int): Sample size of the first sample.
+        sd2 (float): Sample standard deviation of the second sample.
+        n2 (int): Sample size of the second sample.
+
+    Returns:
+        float: The calculated effective sample size.
+    """
     s1 = sd1/(n1**.5)
     s2 = sd2/(n2**.5)
     numerator = (s1**2/n1 + s2**2/n2)**2
@@ -25,6 +51,15 @@ def ws(sd1, n1, sd2, n2): #welche satterthwaite
     return(numerator/denominator)
 
 def groupave(analysis_params):
+    """
+    Averages groups and calculates technical and biological RSDs.
+
+    Args:
+        analysis_params (object): A custom object that contains various analysis parameters.
+
+    Returns:
+        None
+    """
     print('Averaging groups')
     # Load data
     msdata_errprop = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_formatted.csv'), sep=',', header=[0, 1, 2], index_col=[0, 1, 2])
@@ -47,6 +82,16 @@ def groupave(analysis_params):
     msdata_errprop_grpav.to_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_groupaverages.csv'), header=True, index=True)
 
 def properr(analysis_params):
+    """
+    Propagates error and calculates the combined relative standard deviation, absolute combined standard deviation,
+    and effective sample size.
+
+    Args:
+        analysis_params (object): A custom object that contains various analysis parameters.
+
+    Returns:
+        None
+    """
     print('Propagating error')
     msdata_errprop = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_summarydata.csv'),
                                  sep=',', header=[0], index_col=[0, 1, 2, 3])
@@ -68,6 +113,16 @@ def properr(analysis_params):
     
     
 def runfc(analysis_params, statstgrps):
+    """
+    Runs fold change analysis and saves formatted backup for later use.
+
+    Args:
+        analysis_params (object): A custom object that contains various analysis parameters.
+        statstgrps (list): A list of length two containing the names of the two sample groups to compare.
+
+    Returns:
+        None
+    """
     iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep = ',', header = [0], index_col = [0])
     maxval=100
     minval=.01
@@ -88,6 +143,17 @@ def runfc(analysis_params, statstgrps):
     
     
 def runttest(analysis_params, statstgrps, groupsets):
+    """
+    Runs a two-sample t-test for each ion and calculates the q-value.
+
+    Args:
+        analysis_params (object): A custom object that contains various analysis parameters.
+        statstgrps (list): A list of length two containing the names of the two sample groups to compare.
+        groupsets (dict): A dictionary containing ion sets for each comparison group.
+
+    Returns:
+        None
+    """
     # Load iondict and data
     iondict = pd.read_csv(analysis_params.outputdir / 'iondict.csv', sep=',', header=[0], index_col=[0])
     msdata_errprop = pd.read_csv(analysis_params.outputdir / (analysis_params.filename.stem + '_summarydata.csv'), sep=',', header=[0, 1], index_col=[0, 1, 2])
