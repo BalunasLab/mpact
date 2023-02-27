@@ -388,13 +388,15 @@ class UIFunctions(MainWindow):
         UIFunctions.updategroups(self)
         
         
-    def addgroup(self):
+    def addgroup(self, name = 'New Feature Set'):
         """
         Adds a new query set to the list of query sets in the GUI and to the querys list.
         """
-        item = QListWidgetItem('New Feature Set')
+        item = QListWidgetItem(name)
         item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        
         self.ui.listWidget_pltgrps.addItem(item)
+        item.setSelected(True)
         
         currquery = query()
         currquery.name = item.text()

@@ -72,7 +72,6 @@ Check if low_memory=False increases ram usage for average grps?
 - add custom keyword arguments for each plot to make calling them easier
 - add more conditionals so if one plot fails it doesn't kill everything else
 - add runcheck before searching when switching to search tab
-- optimize abundance plot
 - Figure out way to have only active plot be updated and then to update others
     when plot is switched
 - change treewidget in search tab to treeview for better search, add filter options
@@ -82,7 +81,6 @@ Check if low_memory=False increases ram usage for average grps?
     be a good idea depending on ram demands
 - make goto buttons just one class and lambda an index for the stacked widgets
     when connecting!
-- probably refactor plot calls so a seperate regenerate command is not needed
 
 #low priority/long term
 - Switch to MVC format for groupsets
@@ -698,8 +696,27 @@ class MainWindow(QMainWindow):
         
     def enumerate_inputs(self):
         self.analysis_paramsgui = analysis_parameters()
-        self.selset = self.ui.listWidget_pltgrps.currentRow()
-        UIFunctions.writegroups(self)
+        if self.ui.checkBox_blankfilter.isChecked():
+            self.analysis_paramsgui.blnkgrp = str(self.ui.combo_blankfil_name.currentText())
+        else:
+            self.analysis_paramsgui.blnkgrp = ''
+        self.analysis_paramsgui.blnkfltr = self.ui.checkBox_blankfilter.isChecked()
+
+        if len(self.querys) == 0:
+            if self.analysis_paramsgui.blnkfltr:
+                UIFunctions.addgroup(self, 'Features not in blanks')
+                self.querys[0].src = self.querys[0].excl
+                self.querys[0].src.remove(self.analysis_paramsgui.blnkgrp)
+                self.querys[0].excl = [self.analysis_paramsgui.blnkgrp]
+            else:
+                UIFunctions.addgroup(self, 'All features')
+                self.querys[0].src = self.querys[0].excl
+                self.querys[0].excl = []
+            UIFunctions.updategroups(self)
+        else:
+            self.selset = self.ui.listWidget_pltgrps.currentRow()
+            UIFunctions.updategroups(self)
+            UIFunctions.writegroups(self)
         
         self.analysis_paramsgui.kingdom = self.ui.combo_kingdom.currentText()
         self.analysis_paramsgui.genus = str(self.ui.lineEdit_genus.text())
@@ -718,6 +735,9 @@ class MainWindow(QMainWindow):
         if self.ui.checkBox_decon.isChecked():
             self.analysis_paramsgui.graphfilters += 'insource'
             self.analysis_paramsgui.deconthresh = float(self.ui.lineEdit_insourcethresh.text())
+        
+        
+
         
         tempquerydic = {}
         for pos in range(len(self.querys)):
@@ -794,7 +814,6 @@ class MainWindow(QMainWindow):
         else:
             self.analysis_paramsgui.blankfilparam = 'relative'
             self.analysis_paramsgui.blankfilthresh = float(self.ui.lineEdit_blankfilter_relthresh.text())
-        self.analysis_paramsgui.blnkgrp = str(self.ui.combo_blankfil_name.currentText())
         if self.ui.checkBox_blankfilter.isChecked() and self.analysis_paramsgui.blnkgrp == '':
             self.analysis_paramsgui.blnkgrp = 'Blanks'
         self.analysis_paramsgui.ppmthresh = float(self.ui.lineEdit_ppmthresh.text())

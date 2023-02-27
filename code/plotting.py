@@ -1037,6 +1037,52 @@ def gen_upsetplt(parent):    #need to do something to handle groups with names t
     Returns:
     None
     """
+    iondict = pd.read_csv(parent.analysis_paramsgui.outputdir / 'iondict.csv', sep=',', header=0, index_col=None)
+                            
+    # Apply filters if required
+    if parent.analysis_paramsgui.relfil:
+        iondict = iondict[iondict['pass_relfil']]
+    if parent.analysis_paramsgui.decon:
+        iondict = iondict[iondict['pass_insource']]
+    if parent.analysis_paramsgui.blnkfltr:
+        iondict = iondict[iondict['pass_blnkfil']]
+    if parent.analysis_paramsgui.CVfil:
+        iondict = iondict[iondict['pass_cvfil']]
+    
+    # Prepare data for upset plot
+    iongroups = iondict['groups'].tolist()
+    freq = {}
+    biolgroups = []
+    for item in iongroups:
+        if item not in freq:
+            freq[item] = 0
+        freq[item] += 1
+    
+    header = pd.read_csv(parent.analysis_paramsgui.outputdir / (parent.analysis_paramsgui.filename.stem + '_filtered.csv'), sep=',', header=None, index_col=[0, 1, 2]).iloc[0, :]
+    for elem in header:
+        if elem not in biolgroups:
+            biolgroups.append(elem)
+    
+    sets = [' ' + elem for elem in list(freq.keys())]
+    size = list(freq.values())
+    setdf = pd.DataFrame({'groups': sets})
+    for elem in biolgroups:  #have to do this if one group is a substring of another, add space
+        setdf[elem] = setdf['groups'].str.contains(' ' + elem)
+    setdf['size'] = size
+    setdf = setdf.iloc[:, 1:]
+    setdf = setdf.set_index(biolgroups)['size']
+    
+    # Plot and display the upset plot
+    with plt.rc_context({"font.size": 8}):
+        upsetplt = upsetplot.plot(setdf, show_counts='%d', show_percentages=True, sort_categories_by=None)
+    
+    figup = upsetplt['matrix'].figure
+    figup.set_size_inches(5, 4)
+    figup.set_facecolor((0, 0, 0, 0))
+    upsetplt['intersections'].set_facecolor((1, 1, 1, .25))
+    figup.savefig('test_upsetplt.png', dpi=150, bbox_inches='tight')
+    pixmap = QPixmap('test_upsetplt.png')
+    parent.ui.label_upset.setPixmap(pixmap)                                                                     
 
 def gen_treemap(parent):
     #generate treemap for visualization of filtering levels
