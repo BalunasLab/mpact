@@ -69,12 +69,7 @@ class NavigationToolbar(NavigationToolbar2QT):
                     self.clearButtons.append(c)
                     next=None 
             # create custom button
-            pm=QPixmap(32,32)
-            pm.fill(QtWidgets.QApplication.palette().color(QPalette.Normal,QPalette.Button))
-            painter=QPainter(pm)
-            painter.fillRect(6,6,20,20,Qt.black)
-            painter.end()
-            icon=QIcon(pm)
+            icon = QtGui.QIcon("cog.ico")
             picker=QAction("Pick",self)
             picker.setIcon(icon)
             picker.setToolTip("Configure")
@@ -1002,10 +997,42 @@ class prev_cv(ui_plot):
         modelstdevlist = [1] + [0] * (int(average_n) - 1)
         modelstdev = pd.Series(modelstdevlist).std() / pd.Series(modelstdevlist).mean()
         cv50 = iondictmean.iloc[(iondictmean.iloc[:,0] - 50).abs().argsort()[:1]]['average CV']
-        qualscore = round(100 * (1 - cv50 / modelstdev), 1)
+        sortedcv = iondictmean.iloc[(iondictmean.iloc[:,0]).argsort()]['average CV']
+        prevav = 0
+        aucav = 0
+        prevmed = 0
+        aucmed = 0
+        for pos in range(0,len(iondictmean.iloc[:,0])):
+            dist = iondictmean.iloc[pos,:]['average CV'] - prevav
+            aucav += dist*iondictmean.iloc[pos,0]
+            prevav = iondictmean.iloc[pos,:]['average CV']
+            
+            dist = iondictmed.iloc[pos,:]['median CV'] - prevmed
+            aucmed += dist*iondictmed.iloc[pos,0]
+            prevmed = iondictmed.iloc[pos,:]['median CV']
+            
+        meanav = 0
+        meanmed = 0
+        sumskew = 0
+        for val in range(1, int((modelstdev*100))):
+            pos = val/100
+            meanav = iondictmean[abs(iondictmean['average CV'] - pos-modelstdev/200) < modelstdev/200].iloc[:,0].mean()
+            meanmed = iondictmed[abs(iondictmed['average CV'] - pos-modelstdev/200) < modelstdev/200].iloc[:,0].mean()
+            skew = abs(meanmed-meanav)
+            if not np.isnan(skew):
+                sumskew += skew * modelstdev/100
+
+
+        sumskew = sumskew/ ((aucmed+aucav)/2)
+        rep = ((aucmed+aucav)/2)/(modelstdev*100)
+        qualscore = (1-sumskew)*rep*100
+        
+        #qualscore = round(100 * (1 - cv50 / modelstdev), 1)
 
         # Update UI
-        parent.ui.lbl_spllist_3.setText('Overall: ' + str(qualscore)  + '%')
+        parent.ui.lbl_spllist_3.setText('Reproducibility:\n' + str(round(100*rep,1))  + '%\n' +
+                                        'Skewnewss:\n' + str(round(100*sumskew,1))  + '%\n\n' +
+                                        'Overall:\n' + str(round(qualscore,1))  + '%')
 
         # Plot data
         currplt = 'cvplt' #instead take this from input

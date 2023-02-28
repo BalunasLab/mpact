@@ -5194,7 +5194,8 @@ class Ui_MainWindow(object):
         self.lbl_spllist_2.setObjectName("lbl_spllist_2")
         self.verticalLayout_26.addWidget(self.lbl_spllist_2)
         self.frame_7 = QtWidgets.QFrame(self.frame_cvplt_2)
-        self.frame_7.setMaximumSize(QtCore.QSize(16777215, 100))
+        self.frame_7.setMinimumSize(QtCore.QSize(385, 90))
+        self.frame_7.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.frame_7.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_7.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_7.setObjectName("frame_7")
@@ -5202,7 +5203,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_28.setObjectName("verticalLayout_28")
         self.lbl_spllist_3 = QtWidgets.QLabel(self.frame_7)
         self.lbl_spllist_3.setMinimumSize(QtCore.QSize(140, 40))
-        self.lbl_spllist_3.setMaximumSize(QtCore.QSize(140, 40))
+        self.lbl_spllist_3.setMaximumSize(QtCore.QSize(1000, 1000))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(70, 70, 70))
         brush.setStyle(QtCore.Qt.SolidPattern)
@@ -6883,9 +6884,9 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-        self.stackedWidget.setCurrentIndex(5)
-        self.stackedWidget_plot.setCurrentIndex(7)
-        self.stackedWidget_review.setCurrentIndex(0)
+        self.stackedWidget.setCurrentIndex(6)
+        self.stackedWidget_plot.setCurrentIndex(1)
+        self.stackedWidget_review.setCurrentIndex(2)
         self.stackedWidget_grpanalysis.setCurrentIndex(1)
         self.stackedWidget_infobar.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -7024,7 +7025,7 @@ class Ui_MainWindow(object):
         self.btn_cvplt.setToolTip(_translate("MainWindow", "View Feature Details"))
         self.btn_cvplt.setText(_translate("MainWindow", "CV plot"))
         self.lbl_spllist_2.setText(_translate("MainWindow", "<html><head/><body><p>Data Quality</p></body></html>"))
-        self.lbl_spllist_3.setText(_translate("MainWindow", "<html><head/><body><p>Overall: --%</p></body></html>"))
+        self.lbl_spllist_3.setText(_translate("MainWindow", "<html><head/><body><p>Reproducibility: </p><p>--%</p><p>Skewness: </p><p>--%</p><p><br/></p><p>Overall: </p><p>--%</p></body></html>"))
         self.textBrowser_mp_prev.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
