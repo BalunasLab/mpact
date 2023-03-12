@@ -196,6 +196,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
+        
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)  # set always on top flag, makes window disappear
+        self.show() # makes window reappear, but it's ALWAYS on top
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint) # clear always on top flag, makes window disappear
+        #self.show() # makes window reappear, acts like normal window now (on top now but can be underneath if you raise another window)
+        
         self.ui.setupUi(self)
         self.ui.label_credits.setText('Rev 23.02.26')
                 
@@ -715,8 +721,8 @@ class MainWindow(QMainWindow):
             UIFunctions.updategroups(self)
         else:
             self.selset = self.ui.listWidget_pltgrps.currentRow()
-            UIFunctions.updategroups(self)
             UIFunctions.writegroups(self)
+            UIFunctions.updategroups(self)
         
         self.analysis_paramsgui.kingdom = self.ui.combo_kingdom.currentText()
         self.analysis_paramsgui.genus = str(self.ui.lineEdit_genus.text())
@@ -766,7 +772,7 @@ class MainWindow(QMainWindow):
         self.analysis_paramsgui.samplelistfilename = self.samplelistfilename
         self.analysis_paramsgui.extractmetadatafilename = self.extractmetadatafilename 
         if self.outputdir == '':
-            self.outputdir.set(Path(self.analysis_paramsgui.filename).parent)
+            self.outputdir = (Path(self.analysis_paramsgui.filename).parent)
         self.analysis_paramsgui.outputdir = self.outputdir
         self.analysis_paramsgui.fragfilename = self.fragfilename
         Path(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem).mkdir(parents=True, exist_ok=True)

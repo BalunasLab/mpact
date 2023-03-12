@@ -157,8 +157,12 @@ def decon(analysis_params, ionfilters):
     iondict['pass_insource'] = ~iondict.index.isin(ionfilters['insource'].ions)
     iondict.to_csv(analysis_params.outputdir / 'iondict.csv', header=True, index=True)
     
-    # Convert ion filters to MSP format
-    mspwriter.convert_to_msp(ionfilters['insource'], analysis_params)
+    # Convert ion filters to MSP format passes and prints errors
+    try:
+        mspwriter.convert_to_msp(ionfilters['insource'], analysis_params)
+    except Exception:
+        print('Error in MSP writer')
+        pass
     
     return ionfilters
 
