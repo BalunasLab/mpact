@@ -578,5 +578,6 @@ class UIFunctions(MainWindow):
     
     def show_ftrdialog(self):
         self.ftrdialog.show()
-        self.highlight_feature(self.pickedfeature)
+        if self.pickedfeature != '':
+            self.highlight_feature(self.pickedfeature)
 
