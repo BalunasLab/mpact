@@ -23,6 +23,8 @@ Full instructions for data processing are included in the MPACT manual.
 _Updates in Rev 22.02.26_
 
 - Added filtering of database hits by kingdom and genus
+- Dependency check script spawns a window if any dependencies were installed informing user the kernal will restart.
+- Bugfixes in group set interactions, and bruker data import
 
 _Updates in Rev 22.02.19_
 
