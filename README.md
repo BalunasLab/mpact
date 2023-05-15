@@ -20,7 +20,7 @@ _Mac_
 
 Full instructions for data processing are included in the MPACT manual.
 
-_Updates in Rev 22.02.26_
+_Updates in Rev 22.05.15_
 
 - Added data export tab
 - Added GNPS peak table filtering functionality (experimental, only tested with FBMN export in MS-DIAL)
