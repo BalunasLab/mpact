@@ -24,6 +24,7 @@ _Updates in Rev 22.02.26_
 
 - Added data export tab
 - Added GNPS peak table filtering functionality (experimental, only tested with FBMN export in MS-DIAL)
+- Removed analysis info tab
 
 _Updates in Rev 22.02.26_
 
