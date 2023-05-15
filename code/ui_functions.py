@@ -135,6 +135,10 @@ class UIFunctions(MainWindow):
         self.ui.btn_import_outdir.clicked.connect(lambda: UIFunctions.getoutputdir(self))
         self.ui.btn_import_msp.clicked.connect(lambda: UIFunctions.getfragfilename(self))
         
+        self.ui.btn_importgnps.clicked.connect(lambda: UIFunctions.getgnpsfilename(self))
+        self.ui.btn_exportgnps.clicked.connect(lambda: UIFunctions.exportgnps(self))
+
+        
         #colour picker functions
         self.ui.btn_col1.clicked.connect(lambda: UIFunctions.colour_picker1(self))
 
@@ -533,6 +537,13 @@ class UIFunctions(MainWindow):
             self.recentdir = str(self.outputdir)
             self.fragfilename = Path(self.fragfilename)
             self.ui.lbl_msp.setText(self.fragfilename.name)
+
+    def getgnpsfilename(self):
+            self.gnpsfilename, _ = QFileDialog.getOpenFileName(self, 'Open file', self.recentdir,
+                                                                           "*.txt")
+            self.gnpsfilename = Path(self.gnpsfilename)
+            self.ui.lbl_gnpstable.setText(self.gnpsfilename.name)
+
 
 
     #reset uibar buttons
