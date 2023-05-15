@@ -196,8 +196,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
+        
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)  # set always on top flag, makes window disappear
+        self.show() # makes window reappear, but it's ALWAYS on top
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint) # clear always on top flag, makes window disappear
+        #self.show() # makes window reappear, acts like normal window now (on top now but can be underneath if you raise another window)
+        
         self.ui.setupUi(self)
-        self.ui.label_credits.setText('Rev 23.02.26')
+        self.ui.label_credits.setText('Rev 23.05.15')
                 
         #initialize other dialog windows
         self.dialog = dialog()
@@ -253,6 +259,37 @@ class MainWindow(QMainWindow):
 
 
     #---Methods---
+    def exportgnps(self):  #move processing function to a different method                                                                        "*.txt")
+            # Load the first four rows (header) of the first file
+            header = pd.read_csv(self.gnpsfilename, nrows=4, keep_default_na=False, header=None,sep='\t')
+
+            # Ensure header has the same columns as df1
+            header.columns = range(header.shape[1])
+
+            # Load first file skipping first four rows
+            df1 = pd.read_csv(self.gnpsfilename, skiprows=4, header=None,sep='\t')
+
+            # Creating 'Compound' column in df1 by combining 'Average Rt(min)' and 'Average Mz'
+            df1['Compound'] = df1.iloc[:,1].astype(str) + '_' + df1.iloc[:,2].astype(str)
+
+            # Load second file with three header rows
+            df2 = pd.read_csv(self.analysis_paramsgui.outputdir / (self.analysis_paramsgui.filename.stem + '_filtered.csv'), header=[0,1,2])
+
+            # Convert 'Compound' column in df2 to set for faster lookup
+            compounds = set(df2['Unnamed: 0_level_0', 'Unnamed: 0_level_1','Compound'])
+
+            # Filter df1 based on 'Compound' column
+            df1_filtered = df1[df1['Compound'].isin(compounds)]
+
+            # Remove 'Compound' column from df1_filtered
+            df1_filtered = df1_filtered.drop('Compound', axis=1)
+            
+            # Combine header and filtered DataFrame
+            df_final = pd.concat([header, df1_filtered], ignore_index=True).fillna('null')
+
+            df_final.to_csv(self.analysis_paramsgui.outputdir / (self.gnpsfilename.stem + '_filtered.txt'),sep='\t', index=False, header = False)
+            self.ui.label_status.setText('Filtered GNPS peak table exported to output directory')
+    
     def error(self, message):
         self.ui.label_status.setText(message)
         self.ui.label_status.setStyleSheet('color: rgb(150,0,0);')
@@ -641,8 +678,8 @@ class MainWindow(QMainWindow):
         
         self.analysisrun = True
         
-        text = open(self.analysis_paramsgui.outputdir / 'analysisinfo.txt').read() #writes output text to report tab
-        self.ui.textBrowser_info.setPlainText(text)
+        #text = open(self.analysis_paramsgui.outputdir / 'analysisinfo.txt').read() #writes output text to report tab
+        #self.ui.textBrowser_info.setPlainText(text)
     
     
 
@@ -715,8 +752,8 @@ class MainWindow(QMainWindow):
             UIFunctions.updategroups(self)
         else:
             self.selset = self.ui.listWidget_pltgrps.currentRow()
-            UIFunctions.updategroups(self)
             UIFunctions.writegroups(self)
+            UIFunctions.updategroups(self)
         
         self.analysis_paramsgui.kingdom = self.ui.combo_kingdom.currentText()
         self.analysis_paramsgui.genus = str(self.ui.lineEdit_genus.text())
@@ -766,7 +803,7 @@ class MainWindow(QMainWindow):
         self.analysis_paramsgui.samplelistfilename = self.samplelistfilename
         self.analysis_paramsgui.extractmetadatafilename = self.extractmetadatafilename 
         if self.outputdir == '':
-            self.outputdir.set(Path(self.analysis_paramsgui.filename).parent)
+            self.outputdir = (Path(self.analysis_paramsgui.filename).parent)
         self.analysis_paramsgui.outputdir = self.outputdir
         self.analysis_paramsgui.fragfilename = self.fragfilename
         Path(self.analysis_paramsgui.outputdir / self.analysis_paramsgui.filename.stem).mkdir(parents=True, exist_ok=True)
